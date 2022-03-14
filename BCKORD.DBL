@@ -1,6 +1,7 @@
 ; BATCH JOB - edgeBackorders.bat, BCKBLD sorts to this program
 ;DATE		PROJECT:	WHO:	MARK:	DETAIL:     
 ;==================================================================================================
+;03/25/2022	DFCT0055823	MUX	MUX_DFCT0055823 Pass Order's Warehouse location instead of Customer's warehouse location
 ;05/05/2018   	SurePst_LS  	CBE	CBE_SurePst_LS	Code changes for surepost and lasership carrier 
 ;06/26/2017	DFCT0035749	rs7	rs7_DFCT0035749 fix for dexcomm items should route back to ohio 
 ;04/23/2017	SmrtPst_RCO	se2	se2_SmrtPst_RCO_fix Added code to fix issue of SmartPost overriding Ontrac
@@ -2067,7 +2068,7 @@ lblcontinue,
         if  (flg$SmartPstChk .or. flg$RegCarrChk)	
 	   begin
 	      str_zip_in = ALZIP,'XXXXXXXXXX' 
-              xcall checkSmrtpstOrRegCarr(wtznchn,zptchn,DefaultCarrierWH,WRK_SHPLOC,
+              xcall checkSmrtpstOrRegCarr(wtznchn,zptchn,DefaultCarrierWH,shploc,	;WRK_SHPLOC,	;MUX_DFCT0055823
  	    &				 str_zip_in,decTotalWeight,cusmas.compy,flg$SmartPstChk,flg$RegCarrChk,odlvby,
  	    &                            flg$OntracElig,flg$SmrtPstElig,flg$RegCArrElig,CUSMAS,ch$flsdsc,ch$ordlin,ordhdr.ocusno,ordhdr.ordern,ordhdr,ch$invmas);CBE_SurePst_LS	
 
