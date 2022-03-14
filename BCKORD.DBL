@@ -1,0 +1,3312 @@
+; BATCH JOB - edgeBackorders.bat, BCKBLD sorts to this program
+;DATE		PROJECT:	WHO:	MARK:	DETAIL:     
+;==================================================================================================
+;05/05/2018   	SurePst_LS  	CBE	CBE_SurePst_LS	Code changes for surepost and lasership carrier 
+;06/26/2017	DFCT0035749	rs7	rs7_DFCT0035749 fix for dexcomm items should route back to ohio 
+;04/23/2017	SmrtPst_RCO	se2	se2_SmrtPst_RCO_fix Added code to fix issue of SmartPost overriding Ontrac
+;02/18/2017	SmrtPst_RCO	se2	se2_SmrtPst_RCO	    Added logic include regional carriers and SmartPost 
+;06/08/2016	DFCT0029770	PP8	PP8_DFCT0029770	    Added logic to validate the APO/FPO orders to deliver from OH and set dlvby as USPS certified.
+;05/02/2016	DFCT0029481	MB8	MB8_DFCT0029481	Delete and store ORDLIN record when OrderLineID is changed
+;03/16/2016	V10migr         jat	V10migr 	Changes to support Synergy v10
+;06/25/2015	CA_pharmacist2	dj6	dj6_CA_Pharmacist2 Added logic to identify pharmacist items for State and item number combination
+;06/28/2015     CA_Pharmacist   UV1     UV1_CA_Pharmacist
+;							Added key field strphr_flgreview to the existing key0.
+;01/23/2015     Falcon		kd	kd_falcon	Switch delivery method from fedex to  ups and vice versa according to warehouse preference
+;09/10/2014	INC1140427	LM3	LM3_INC1140427	Pharmacist order should ship from 01. Non-pharmacist order 
+;							should ship from the nearest shipping location.
+;03/20/2014	OIT2013		Kish_B 	OI-1568		Make sure new field strOrderLineId is non-blank
+;11/28/2012	xx		guy	guy_FixLoc		ordsts/ordlin location mismatches when 98 ordsts already exists
+;5/3/2012	xx		guy	guy_NoDMERCOnTrac	don't switch DMERC to OnTrac
+;08/18/2011	ORSCLE PH3              jjf_OraclePh3   convert to use by OraclePhase3
+;06/28/2011	ms_ontrac	changes for ontrac carrier
+;04/21/2011                             jjf_wo40554     43WAFER chgd ship from any warehouse
+;11/02/2009	ms_tsp-09002  anything originally shipping FedEx express, then backordered, goes back to ground  
+;8/7/2009	xx		guy	guy_Recall	force Medtronic recall items to loc #1
+;01/14/2009	mfh_wo233124	mfh	mfh_wo233124	Remove comment from shipping ticket
+;09/15/2008	ms_ops_08007				remove hardcoding of xfer locations
+;06/09/2008	hmo-07028	skh	skh_hmo-07028	Changes for Competitve bid.
+;4/21/2008	etd_kendallcrp.04212008			changes for the PO expansion
+;12/13/2007	xx		guy	guy_New		set new flag when re-creating ordsts
+;12/04/2007     OPS-ops07011    jjf     jjf_OPTOUT2      Report changes
+;12/03/2007     OPS-ops07011    jjf     jjf_OPTOUT      changes for OPT OUT Shipping Carrier 
+;11/27/2007	ops07011        jjf	jjf_ops07011.2	add OPT OUT, Preferred Carrier to report
+;11/19/2007	ops07011        jjf	jjf_ops07011	Locn Chg - check Ship Carrier chg
+;10/19/2007	xx		guy	guy_NoReplace	don't re-create a status record again if there are open audits
+;09/24/2007	ops07011	jjf     jjf_ops07011	Residential vs Commercial code from CUST or Address
+;6/29/2007	cs-144		guy	guy_062007-29	if find dup ordsts record make sure it is in B/O status
+;03/11/2007	location 5	jbl	jbl2	changes for location 5 call to calc_ship_loc
+;01/11/2007     bill447         tml     tml_bill447     NEW symbol for Combined Billing Limits
+;09/05/2006     wo141471	jdt	jdt_wo141471 Change --20%-- to Co-Ins/Co-Pay
+;07/06/2006     mew_wo135196	do not print backordered PO's any more.
+;06/12/2006	gb_wo132560	force orders with items 0011660950 and 0011670950 to ship from oh	
+;2/2/2006       edi-224         l.may   lim_edi-224     Removed obsolete 43 item numbers.
+;01/19/2006	edi-224		jdt	jdt_edi-224  Fedex changes
+;12/03/2005	scj_acc-14	changes for sales tax
+;10/27/2005	gb_hmo-141	force shiploc on horizon bcbs orderse
+
+;9/16/2005	automate	guy	guy_automate	automate nightly process
+;05/18/2005     pur-211	  	djm     djm_pur211          New tie logic to use priority location and subroutine call.
+;11/09/2004	mis-34		l.may	lim_mis-34	Upgrade cluster for epbackoffice.
+;7/07/2004	pur-192		mew	mew2	add recon_loc field
+;5/05/2004   	mis-90	       l.may	lim1	Replaced 'spawn' to outlook with to easymail.
+;04/01/2004	hm0-111		gb	gb03292004	change shipping lcoation for 4005 to NY
+;12/31/2003	mis-61.19	mew	mew1	RGH Backoffice Conversion
+;07/15/2003    BILL-216.1       jsw     jsw1     Added logic to call the new Extract_Customer_Ins 
+;					         routine.
+;05/15/2003	wo# 3875	guy	guy4	correct channel on read
+;04/11/2003	CS-77		skh	skh1	added switch to OH or CA if certified mail and
+;						original ship location is TX or NY
+;1/22/2003	AARP-??		guy	guy3	force orders with RPD items out of OH
+;1/7/2003			etd	etd5	displays
+;11/12/2002			guy	guy2	dont change lshplc if forced out of TX
+;11/8/2002			etd	etd4  	add some displays to help resolve issues
+;
+;09/27/2002			guy	guy2	force 43wafer orders from OH
+;
+;01/04/2001	X		SCJ	SCJ1	REMOVED " OK QUESTION"     
+;04/09/2001	x		jbl	jbl1	add uom channel to xcall for porecv     
+;04/11/2001	x		etd	etd1	additional changes for inproc8     
+;07/16/2001			etd	etd2	changes for 4newyork
+;08/06/2001			KMS	KMS1	Replace READ/READS with UT_READ/UT_READS; add unlocks
+;8/15/2001			etd	etd3	add email and dont use mesag
+;02/08/02			kag	kag1	added logic for hot cold flag
+;08/12/2002			guy	guy1	send B/O back to location product should have shipped from
+
+.include	'ar1:CheckForLastAudit.dbl'		;remove after elb creation		;guy_NoReplace
+.INCLUDE	'INV1:PORECV.DBL'
+.include 	'IntFc:TestPOBox.dbl'
+.include 	'IntFc:getCustomerAddress.dbl'		;CBE_SurePst_LS
+.MAIN BCKORD
+START	;BCKORD.DBL	09/12/89    POINT OF SALE - PRINT DELIVERY TICKETS/BO
+      
+;;----------------------------------------------------------     
+;;             Property of RGH Enterprises, Inc.     
+;;        RGH Enterprises, Inc. software -- AXP version 1.0     
+;;        Revision date:  01-FEB-1996     
+;;        Converted from VAX Dibol to AXP Synergy DBL v5.7.4     
+;;----------------------------------------------------------     
+      
+;     
+;	READS TMPIDX TO GET CUSTOMER & ORDER,ETC., PRINTS TICKET, UPDATES PRINT     
+;	FLAG TO 'P' FOR PRINTED, BUT NOT OKAYED.  AFTER ALL TICKETS HAVE PRINTED     
+;	AND THEY ARE OKAYED THE ITEMS FLAGED WITH 'P' ARE UPDATED TO 'Y'.     
+;	THIS WAY NO LINE ITEMS THAT HAVE BEEN PREVIOUSLY PRINTED(FLAG='Y') WILL     
+;	SHOW UP IN A REPRINT.     
+;
+
+.include 'eordsts' repository 'rpsloc',record='recSaveOrdsts'		;guy_062007-29
+
+.include	'mfd:JobMonitor.mfd'
+
+.INCLUDE	'MFD:CUSMAS.MFD'     
+.INCLUDE	'MFD:CUSMA2.MFD'     
+;jsw1 .INCLUDE	'MFD:CUSINS.MFD'     
+.INCLUDE	'MFD:CUSINS_NEW.MFD'     ;jsw1
+.INCLUDE	'MFD:ENTERL.MFD'     
+.INCLUDE	'MFD:RNTLIN.MFD'     
+.INCLUDE	'MFD:ORDLIN.MFD'     
+.include	'mfd:olnkey.mfd'	;guy2
+.INCLUDE	'MFD:ORDHDR.MFD'     
+;mew1 .INCLUDE	'MFD:VNDARY.MFD'
+.include        'MFD:vndcod.mfd'	;mew1
+.INCLUDE	'MFD:ARCTRL.MFD'     
+.INCLUDE	'MFD:PURLIN.MFD'     
+.INCLUDE	'MFD:LOCMAS.MFD'     
+.INCLUDE	'MFD:ADDRES.MFD'     
+.INCLUDE	'MFD:ADRKEY.MFD'     
+.INCLUDE	'MFD:COMPNY.MFD'     
+.INCLUDE	'MFD:TRMMSG.MFD'     
+.INCLUDE	'MFD:COMMON.MFD'     
+.INCLUDE	'MFD:INSRNC.MFD'     
+.include	'mfd:insrn2.mfd'	;se2_SmrtPst_RCO
+.INCLUDE	'MFD:INSKEY.MFD'     
+.INCLUDE	'MFD:ORDSTS.MFD'     
+.INCLUDE	'MFD:BILLER.MFD'     
+.INCLUDE	'MFD:INVMAS.MFD'     
+.INCLUDE	'MFD:INVKEY.MFD'     
+.include	'mfd:ivctrl.mfd'     
+.include 'wnd:windows.def'	;include needed defs
+.include 'mfd:gwindow.mfd'	;include needed defs
+.include	'mfd:ediuom.mfd'	;etd1     
+;.include	'MFD:ZIPTNT.MFD'     	    ;kag1  ;djm_pur211
+.include	'mfd:cus_order_audit.mfd'	;guy_NoReplace
+
+
+.include	'mfd:serviceinfo.mfd' 		;jjf_ops07011
+.include 'EPHMRVW'  	 repository 'rpsloc', record='PHRMRVW' 		;LM3_INC1140427
+.include 'EPHMRVW_KEY0'  repository 'rpsloc', record='PHRKEY'  		;LM3_INC1140427
+.include 'EPHMRVW_KEY1'  repository 'rpsloc', record='PHRKY2'  		;LM3_INC1140427
+.include 'EPHMRVW_KEY2'  repository 'rpsloc', record='PHRKY3'		;dj6_CA_pharmacist2
+.include 'mfd:DefaultCarrierWH.MFD';kd_falcon
+
+external function
+	collapse	,a
+
+
+RECORD OSARCV     
+		,A321     
+	MANAME 	,A25     
+	MADATE	,D8     
+	MARELTN	,A10     
+	MACNFRM	,A3     
+		,A145     
+      
+RECORD TMPIDX     
+	TCOMP	,D3     
+	TSVCR	,A3     
+	TCUSN	,A11     
+	TORDN	,D10     	;etd_kendallcrp.04212008
+	TTYPE	,A1     
+	TRLS	,D1     
+	TSHPLC	,D2
+		,a4	
+		     
+RECORD FILLER     
+		,A40	,'________________________________________'     
+		,A40	,'________________________________________'     
+      
+RECORD     
+	LETTRS	,26A1	,'A','B','C','D','E','F','G','H','I','J','K','L','M'     
+&			,'N','O','P','Q','R','S','T','U','V','W','X','Y','Z'     
+	LTRCNT	,D2     
+	NUMVAL	,D3     
+	POINTR	,D3     
+RECORD	BILARY     
+	BILINT	,26A3     
+      
+RECORD	MAILMSG     
+		,A*	,'MAIL/SUBJECT="BACKORDER PROCESSING" '     
+		,A*	,'BCKMAIL.TXT GUY'     
+RECORD	MAILMSG2     
+		,A*	,'MAIL/SUBJECT="BACKORDER COUNTS" '     
+		,A*	,'BCKMAIL.TXT TSHAULIS'     
+      
+RECORD	ACTMAIL     
+		,A*	,'DUPLICATE IN ORDSTS FILE (EDG) - NO BACKORDER CREATED  - CUSTOMER # '     
+	MAILCS	,A15     
+		,A*	,' ORDER # '     
+	MAILOR	,A7     
+      
+RECORD PRTCMD     
+		,A*,'PRINT/PASSALL/NOFEED/QUEUE='     
+	PRTQUE	,A10     
+		,A1     
+	PRTFIL	,A40     
+;------------------------------------------------------------------------- ;jjf_ops07011
+record ReportPrtLN
+	strR_Cpy	  ,a3
+			  ,a2
+	strR_CustNo	  ,a11
+			  ,a2
+	strR_OrderNo      ,a7
+			  ,a2
+	strR_RDI	  ,a1
+	                  ,a3
+	strR_PreCarr      ,a1
+	                  ,a3
+	strR_Zipcode      ,a5		;jjf_optout2
+	                  ,a3
+	strR_InsNo        ,a4		;jjf_optout2
+		    	  ,a70
+;
+record ReportPrtLN2
+			  ,a18
+	strR_ITEM	  ,a11
+			  ,a1
+	strR_OLD_SHIPLOC  ,a2
+	                  ,a5
+	strR_NEW_SHIPLOC  ,a2
+	                  ,a5
+	strR_HAZARD	  ,a1
+			  ,a61
+;
+record ReportPrtLN3
+			  ,a18
+;se2_SmrtPst_RCO+
+;	strR_OLD_ODLVBY   ,a1
+;		          ,a6
+	strR_OLD_ODLVBY	  ,a2
+		          ,a5
+;se2_SmrtPst_RCO-
+	strR_OLD_ORUSH	  ,a1
+			  ,a5
+	strR_OLD_CARR	  ,a5
+			  ,a2
+;se2_SmrtPst_RCO+
+;	strR_NEW_ODLVBY   ,a1
+;		          ,a5
+	strR_NEW_ODLVBY   ,a2
+		          ,a4
+;se2_SmrtPst_RCO-
+	strR_NEW_ORUSH	  ,a1
+			  ,a5
+	strR_NEW_CARR	  ,a5
+			  ,a3
+	strR_ZIP          ,a5
+	                  ,a1
+	strR_METH_DELV	  ,a25
+
+record ReportVar
+    	decSAV_ORDR	  ,d7
+    	decSAV_ORDR2	  ,d7
+    	decSAV_ORDR3	  ,d7
+	;decOLD_ODLVBY	  ,d1	;se2_SmrtPst_RCO
+	decOLD_ODLVBY	  ,d2	;se2_SmrtPst_RCO
+	decOLD_ORUSH	  ,d1
+	strOLD_CARR	  ,a5
+	strMSG		  ,a30
+
+	decPreCarrier	  ,d1		;jjf_ops07011.2
+	decOptOutForce	  ,d1           ;jjf_ops07011.2
+
+;------------------------------------------------------------------------- ;jjf_ops07011
+;
+RECORD FIGURS     
+	LCOUNT 	,D2     
+      
+RECORD	LOCBIN     
+	FSTFLA	,D1     
+	FSTFLB	,D1     
+	FSTFLC	,D1     
+	ZONEA	,D1     
+	ZONEB	,D1     
+	ZONED	,D1     
+	ZONEE	,D1     
+	ZONEBLK	,D1
+
+record locsOrderArray				;jbl2
+	decLocsOrderArray	,99d2		;jbl2
+
+record	channels
+	LOCCHN	,D2	,10     
+	INVCHN	,D2	,18     
+	INSCHN	,D2     
+	edichn	,d2	,24		;jbl1     
+	TXTCHN	,D2	,98     
+	IINVCHN	,D2	,23     
+	oln2chn	,d2	,25		;guy1
+	zptchn	,d2	,30		;guy1
+	wtznchn	,d2	,35		;se2_SmrtPst_RCO
+	olnchn_w	,d2	,31	;guy2
+	vndcod_chn	,d3	,200	;mew1
+
+	ch$servic       ,d4	;jjf_ops07011
+	ch$carrir       ,d4	;jjf_ops07011
+	ch$carser       ,d4	;jjf_ops07011    
+        ch$AuditRpt    ,d4	;jjf_ops07011
+	ch$CBReport	,d4	;skh_hmo-07028
+
+	strDateTime	  ,a20	;jjf_ops07011
+	ch$TMPIDX	,d4
+	ch$PhrmRvw     	,d4  	;Pharmacist channel ;LM3_INC1140427 
+	ch$flsdsc   	,d4     ; Channel for FlsDsc	;CBE_SurePst_LS
+	ch$ordlin	,d4	,1	;CBE_SurePst_LS
+	ch$invmas	,d4	,18	;CBE_SurePst_LS
+
+;guy_NoReplace
+record	recAuditParam
+	ch$CusAud		,d4
+	decCompany		,d3
+	strCustomerNumber	,a11
+	decOrderNumber		,d7
+	strActivity		,a3
+	flg$AllAuditsClosed	,d1
+	flg$NoAudits		,d1
+;*****************************************guy_NoReplace
+
+RECORD     
+	NXTDAY	,D1     
+	CNGCAR	,D1     	;MEDICARE Insurance Flag !
+	BCKCOD	,D1    
+	decSigReqflag	,d1	;ms_ontrac
+	ANAME	,A25     
+	BLANK	,A40	,'                                        '     
+	PAGE	,D2     
+	decALTADD_Flg	,D1     
+	LSTCUS	,A11	,'ZZZZZZZZZZZ'     
+	LSTORD	,D10       		;etd_kendallcrp.04212008
+	LSTTYP	,A1     
+	RENTAL	,D1	,0			;1=THERE WERE RENTAL B/O'S     
+	PO	,D1	,0			;1=THERE WERE P.O. B/O'S     
+	PRTHDR	,D1     
+	REPRINT	,D1     
+	BEGSEQ	,D5     
+	ENDSEQ	,D5     
+	SLSTAX	,D5	,00000     
+	NONRNT	,D6	,000000     
+	NONSLS	,D6	,000000     
+	TOT20	,D5	,00000     
+	CUSTOT	,D7	,0000000     
+	SUBTOT	,D7	,0000000     
+	TOTDED	,D5	,0     
+	TOTAL	,D7	,0000000     
+	FILNAM	,A255     
+	VNDNAM	,A35     
+	VNDCNT	,D2     
+       	KEY 	,A11     
+	LKEY	,A18     
+	AMOUNT	,D6     
+	TAX	,D5     
+	RNTSAL	,A1     
+	RENT	,D1     
+	CUSFMT	,A15     
+	LINCNT	,D1     
+	PGCNT	,D2     
+	CNT	,D5     
+	PLINE	,A132     
+	ENTRY	,A25     
+	COPIES	,D3,001     
+	LABTYP	,D1     
+	PROPEN 	,D1	;PRINTER OPEN FLAG -- 1 = ALREAD OPEN AND KEEP OPEN     
+	INXCTL	,D1     
+	SWITCH 	,D2	,11     
+	YECMT	,A1     
+	SAVDAT	,D8     
+	TODAY	,D8     
+	TIM	,D6     
+	MNTFLG	,D1     
+	JLDAT	,D3     
+	RUSH    ,9A8    ,'GROUND  ','NEXT DAY','2ND DAY ','3 DAY SL','1 DY B48'     
+&                       ,'1 DY B10','2 DAY AM','NEXT SAT','        '     
+	DELV	,9A12	,'TRUE WALK-IN','PHON WALK-IN','DRIVER      '     
+&			,'UPS         ','US POSTAL   ','            '     
+&			,'            ','WORLDSHIP   ','            '     
+	MAXRSH	,D1	,8     
+      	ERN	,D3     
+	ERL	,D3     
+	HLDDAT	,D8     
+	CAIDCK	,D1     
+	FRST	,D1     
+	OLDCPY	,D3     
+	SAVPJ	,D6     
+	BLKPOS	,D2     
+	WHRFRM	,A1     
+	OUT	,A255     
+	SAVOUT	,A255     
+	VMST	,D1     
+	VMLOG	,D1     
+	SHPLOC	,D2     
+	ESC	,A1     
+	FIVE	,A1     
+	SEVEN	,A1     
+	LINSIZ	,D3     
+	WCHPTR	,D2     
+	WCHFRM	,D2     
+	I	,D3     
+	I2	,D3     
+	SAVORD	,D7     
+	STPFLG	,D1     
+	NEWPAG	,D1     
+	ACTQTY	,D4     
+	MATRX	,A20     
+	ONEITM	,D1     
+	PASS	,D1     
+	DUPCNT	,D3     
+	SWTDAT	,D8     
+	DISCNT	,D1     
+	ORDER	,D7     
+	HLDORD	,D7     
+	AUDLIN	,3A40     
+	ALLOTHR	,D1     
+	FSTFLW	,D1     
+	VAULT	,D1     
+	SHPCMT	,D1     
+	SPCPRT	,D1     
+	CODAMT	,D7     
+	SAVLTA	,A8	     
+	tckcnt	,d5     
+	msgcnt	,a60     
+	crtflg	,d1     
+	PBINNO	,A8     
+   	UOM1    ,A7     
+        UOM2    ,A7     
+        UOMKEY  ,A3     
+        uom_full_desc   ,a25     
+        new_inproc8     ,a7   
+	time	,d8
+;djm_pur211	testzip	,a5
+;djm_pur211	zipk	,a9
+;djm_pur211	zcount	,d2			;guy1     
+;djm_pur211	shpday	,d3			;guy1     
+	new_binno	,a8		;guy1
+	;have_wafer	,d1		;jjf_wo40554     ;guy2
+	;have_rpd_item	,d1		;jjf_wo40554   ;guy3
+
+	flg$MedRecall	,d1		;guy_Recall
+	err_code	,a3
+	strEmailName	,a255		;lim1
+	dec_ishot       ,d1		;djm_pur211
+	str_zip_in      ,a9             ;djm_pur211
+	flg$TestEnv	,d1		;guy_automate
+	strTranslation	,a80		;guy_automate
+	decLength	,d3             ;guy_automate
+	strCommandLine	,a1024
+	strBatch	,d1
+	decBCBSItem	,d1		     ;gb_hmo-141
+	decNewShipVia,d1                  ;gb_hmo-141
+
+	strSAVResOrCom     ,a1    ;jdt_edi-224
+	decCarrier	,d1    ;jdt_edi-224
+
+;	decUSE_ODLVBY	 ,d1		;jjf_ops07011  ;se2_SmrtPst_RCO 
+	decUSE_ODLVBY	 ,d2		;se2_SmrtPst_RCO
+        decOverRideRush  ,d1            ;jjf_ops07011	
+	decNewRush	,d1		;jjf_ops07011	
+	decOLD_SHPLOC	,D2     	;jjf_ops07011	
+       ;; decNEW_SHPLOC	,D2   		;jjf_ops07011	
+        strHldZip9      ,A9   		;jjf_ops07011	
+        strOLDLocn  	,a2		;jjf_ops07011	
+        strNEWLocn  	,a2		;jjf_ops07011	
+
+        strFedExCarrierCode   ,a1       ;jjf_ops07011	
+        decNewCarrier_Flg     ,d1	;jjf_ops07011	
+        strHAZ_SEVERITY_FLG   ,a1       ;jjf_ops07011	
+	strDispCustOrdNo   ,a20		;jjf_ops07011	
+	New_odlvby	,d2		;kd_falcon
+	decTotalWeight	,d6	; se2_SmrtPst_RCO
+	wrk_shploc	,d2	; se2_SmrtPst_RCO
+
+RECORD TOPHLF     
+	DUPLNS	,50A132     
+	RETURNED_STATUS ,A1		;jsw1
+	decOtherItem	,d1
+
+
+
+RECORD	In_decInsurance_Array	                ;djm_pur211
+	decInsuranceNo1         ,d4		;djm_pur211
+	decInsuranceNo2         ,d4		;djm_pur211
+	decInsuranceNo3         ,d4		;djm_pur211
+	decInsuranceNo4         ,d4		;djm_pur211
+	decInsuranceNo5         ,d4		;djm_pur211
+	decInsuranceNo6         ,d4		;djm_pur211
+;
+;---	Start of skh_hmo-07028
+;
+record  CB_Report_array
+	strCBArray	,25a215		;Competitive bid array to hold the new reporting data
+;
+record	cb_detail
+	strCBAccount	,a12
+	strCBName	,a35
+	strCBOrder	,a8
+	strCBItem	,A^size(invma1.itemno)           ;jjf_OraclePh3
+	strCBDesc	,a50
+	strCBFill	,a82
+;
+record	
+	decCBAryCount	,d2
+	decCBFlagSet	,d1	
+	decCBTotalCount	,d2
+	decICount	,d2
+	decPos		,d2
+;
+record
+	strCBEmailFile	,a255
+;	strCBOldDelvry	,a1	;se2_SmrtPst_RCO
+	strCBOldDelvry	,a2	;se2_SmrtPst_RCO
+	strCBOldRush	,a1
+;	strCBNewDelvry	,a1	;se2_SmrtPst_RCO
+	strCBNewDelvry	,a2	;se2_SmrtPst_RCO
+	strCBNewRush	,a1
+	strCBPrintLine	,a1000
+	strRunDate	,a20
+	strCompany	,a12
+	strSpace	,a1
+;
+;---	End of skh_hmo-07028
+;
+;LM3_INC1140427+
+Record       
+	flg$PhrmOrd	,a1			;To check if it's a pharmacist order. (Y=Pharmacist Order)
+	flg$legend   	,a1			;Variable to determine the legend item
+	flg$RecFound  	,a1			;Variable to determine if the record is present in PHRMRVW file
+;se2_smrtpst_RCO+
+	flg$SmartPstChk 	,d1			
+        flg$RegCarrChk 		,d1
+	flg$OffContinentalUSA	,d1
+        flg$POBOx		,d1  
+	flg$PdtClsOptOut	,d1
+	flg$OntracElig		,d1  	,FALSE   ;indicates Ontrac elgible
+	flg$SmrtPstElig		,d1	,FALSE	;indicates smartpost elgible
+	flg$RegCArrElig		,d1	,FALSE	;indicates regional carrier eligible
+;se2_smrtpst_RCO-
+	flgDropShip		,d1 	;CBE_SurePst_LS
+;LM3_INC1140427-
+;----------------------------------------------------------------------      
+.PROC     
+;OPEN (15,I,'TT:')     
+	xcall startup_windows	;open window for screen displays
+	onerror errtrap
+
+
+	clear strBatch
+	xcall cmdln (strCommandLine)
+       	if (%instr(1,strCommandLine,'-n')) strBatch = 1
+
+
+	; XCALL DFLAG (000)
+	; xcall btchlogin('','',' ',' ',err_code)
+	; xcall set_test_data()
+	; xcall setedg
+;
+
+	;================================================
+	; Test vs Prod mode - SET FOR PRODUCTION MODE !!
+	;================================================
+       ; xcall btchlogin ('BCKORD','jeff_f',' ',' ',err_code)    ;testing
+       ; xcall setedg                                            ;testing
+       ; xcall set_test_data(5)                                  ;testing
+
+;guy_automate
+       	xcall getlog ('TEST_ENVIRONMENT',strTranslation,decLength)
+	clear flg$TestEnv
+       	if (strTranslation(1,1) .eq. '1') flg$TestEnv = 1
+;*********************************end guy_automate
+	xcall setedg
+	XCALL ASCII (27,ESC)     
+	XCALL ASCII (5,FIVE)	;SET FOUR CHARACTER     
+	XCALL ASCII (7,SEVEN)	;SET SEVEN CHARACTER     
+	XCALL W_DISP (G_WNDID,WD_POS,1,1,WD_CLR,WDC_EOW,'BACKORDER DELIVERY TICKETS',wd_updt)     
+	xcall getcm(common)     
+	SAVPJ = UICPJ     
+	UICPJ = 999     
+	xcall putcm(common)     
+	XCALL W_DISP (G_WNDID,WD_POS,2,1,'PRINT')     
+	XCALL FILES (1,'U',45,SWITCH,2)		;ORDLIN     
+	XCALL FILES (2,'U',44,SWITCH,2)		;ORDHDR     
+	XCALL FILES (3,'U',54,SWITCH,2)		;RNTLIN     
+	XCALL FILES (4,'I',01,SWITCH,2)		;CUSMAS     
+	XCALL FILES (6,'I',152,SWITCH,2)	;ENTERL  
+
+
+     ;TESTING !!!-----------------------------
+      ;;  ch$TMPIDX = 7    ;%syn_freechn (200,1024)              ;TESTING - REMOVE !!
+      ;;  open (7,'I','c:\A\tmpidx_bo.txt')   		 ;TESTING - REMOVE !!
+   
+        XCALL FILES (7,'I',08,SWITCH,0)		;TMPIDX   ;TMPIDX  PROD FILE !!
+
+	XCALL FILES (8,'I',200,SWITCH,2)	;CONTROL     
+	;jsw1 XCALL FILES (9,'I',153,SWITCH,2)	;CUSINS     
+	XCALL FILES (10,'I',77,SWITCH,2)	;LOCMAS     
+;mew	open (7,'I:R','EP71:tmpidx_bckord.rel')
+	XCALL FILES (11,'I',11,SWITCH,2)	;VENMAS     
+	XCALL FILES (12,'U',48,SWITCH,2)	;PURLIN     
+	XCALL FILES (13,'I',154,SWITCH,2)	;ADDRES     
+	XCALL FILES (16,'I',80,SWITCH,2)	;CUSMA2     
+	XCALL FILES (5,'I',158,SWITCH,2)	;COMPNY     
+	XCALL FILES (18,'I',41,SWITCH,2)	;INVMAS     
+	XCALL FILES (19,'I',60,SWITCH,2)	;INSRNC     
+	XCALL FILES (20,'U',192,SWITCH,2)	;ORDSTS     
+	XCALL FILES (21,'I',09,SWITCH,2)	;BILLER     
+	XCALL FILES (22,'I',193,SWITCH,2)	;OSARCV     
+	xcall files (50,'I',571,switch,2)	;INSRN2		;se2_SmrtPst_RCO     
+	xcall files (edichn,'I',268,31,2)	;ediuom 
+	XCALL FILES (oln2chn,'U',45,SWITCH,2)	;ORDLIN for store if loc change
+;	xcall files (30,'I',191,31,2)		;ZIPTNT;guy1
+	xcall files (zptchn,'I',191,31,2)	;ZIPTNT		;guy1
+	xcall files (wtznchn,'I',672,11,2)	;WTZONE		;se2_SmrtPst_RCO
+	XCALL FILES (olnchn_W,'I',45,11,2)		;ORDLIN     ;guy2
+        xcall files (vndcod_chn,'I',173,switch,2)	;mew1
+	xcall files (ch$CusAud,'I',486,11,2)		;guyNoReplace
+
+	XCALL FILES (ch$servic,'I:I',463,SWITCH,2)   ;eps service file     ;jjf_ops07011
+	XCALL FILES (ch$carrir,'I:I',462,SWITCH,2)   ;eps carrier file     ;jjf_ops07011
+        xcall files (ch$carser,'I:I',464,SWITCH,2)   ;eps valid carrier/service file ;jjf_ops07011
+	xcall files (ch$flsdsc,'I',97,11,2)		;CBE_SurePst_LS
+	strDatetime = %datetime					;jjf_ops07011
+	ch$AuditRpt = %syn_freechn (200,1024)			;jjf_ops07011
+        open(ch$AuditRpt,'O','SPL:BCKORD_EP_' +%atrim(strDatetime(1:18)) +'.txt') ;jjf_ops07011
+
+;LM3_INC1140427+
+        ch$PhrmRvw = %syn_freechn(256,1024)			;To find a free channel
+	xcall files (ch$PhrmRvw ,'I', 652,11,2)	      		;Open Pharm Review file
+;LM3_INC1140427-
+;
+;---	Start of skh_hmo-07028
+;
+	strCBEmailFile = 'spl:Competitive_Bid_Report_' + %atrim(strDatetime(1:18)) +'.csv'
+	ch$CBReport = %syn_freechn (200,1024)
+	open (ch$CBReport,'O',strCBEmailFile)
+;
+	clear strCBPrintLine
+;
+	strSpace = ' '
+	xcall append_to_delimited_record(strCBPrintLine,'PROGRAM: EP Competitve Bid BCKORD')
+	xcall append_to_delimited_record(strCBPrintLine,'AUDIT UPDATE REPORT')
+	strCompany(1,9) = 'COMPANY: ' 
+	strCompany(10,12) = %string(common.curcpy,'ZZX')
+	strRunDate(1,10) = 'RUN DATE: ' 
+	strRunDate(11,20) = %string(^d(strDatetime(5:4)),'XX/XX') + %string(^d(strDatetime(1:4)),'/XXXX')	;V10migr
+	xcall append_to_delimited_record(strCBPrintLine,strCompany)
+	xcall append_to_delimited_record(strCBPrintLine,strRunDate)
+	xcall append_to_delimited_record(strCBPrintLine,strSpace)
+	xcall append_to_delimited_record(strCBPrintLine,strSpace)
+	xcall append_to_delimited_record(strCBPrintLine,strSpace)
+	xcall append_to_delimited_record(strCBPrintLine,strSpace)
+	xcall append_to_delimited_record(strCBPrintLine,strSpace)
+;
+	writes (ch$CBReport,strCBPrintLine)
+;
+	clear strCBPrintLine
+;
+	xcall append_to_delimited_record(strCBPrintLine,'Account')
+	xcall append_to_delimited_record(strCBPrintLine,'Name')
+	xcall append_to_delimited_record(strCBPrintLine,'Order')
+	xcall append_to_delimited_record(strCBPrintLine,'Item')
+	xcall append_to_delimited_record(strCBPrintLine,'Item Desc')
+	xcall append_to_delimited_record(strCBPrintLine,'Old Delivery Method')
+	xcall append_to_delimited_record(strCBPrintLine,'Old Rush')
+	xcall append_to_delimited_record(strCBPrintLine,'New Delivery Method')
+	xcall append_to_delimited_record(strCBPrintLine,'New Rush')
+
+        writes (ch$CBReport,strCBPrintLine)
+	clear DefaultCarrierWH;kd_falon
+	xcall returnDefaultCarrier (8,DefaultCarrierWH);kd_falcon
+;
+;---	End of skh_hmo-07028
+;
+	CURCPY = 2
+	XCALL PUTCM (COMMON)     
+	XCALL FILES (IINVCHN,'I',41,21,2)     
+	CURCPY = 1     
+	XCALL PUTCM (COMMON)     
+	INSCHN = 19   
+
+     ;init clear
+        clear decNewCarrier_Flg, strHldZip9,strSAVResOrCom		;jjf_ops07011
+	clear decCBFlagSet,CB_Report_array,CB_detail,decCBTotalCount	;skh_hmo-07028
+       
+	call Audit_RptHeaders					       ;jjf_ops07011  
+
+
+REDCTL,          
+	READ (8,ARCTRL,3) 	[40=redctl]		;mew2    
+     
+	XCALL FILES (8,'I',200,2)     
+	WHRFRM = 'B'     
+	CNT =     
+	REPRINT =     
+	PRTHDR = 1     
+	NEWPAG =     
+	TODAY = 1     
+	XCALL RDATE (TODAY)     
+	SAVDAT(1,4) = TODAY(5,8)     
+	SAVDAT(5,8) = TODAY(1,4)     
+	YECMT = 'N'     
+	IF (TODAY(1,4).GE.1001.AND.TODAY(1,4).LE.1207) YECMT = 'Y'     
+	PAGE =     
+;	LOAD BILLER INITIALS BY LETTER RESPONSIBLE     
+;     
+BILLOP,         
+	READS (21,BILLER,GETCUS)	[1=getcus,40=billop,53=getcus]     
+    
+	LTRCNT =     
+LTRLOP,     
+	INCR LTRCNT     
+	IF (LTRCNT .GT. 26) GOTO BILLOP     
+	IF (BILLTR(LTRCNT) .EQ. ' ') GOTO BILLOP     
+	XCALL DECML (BILLTR(LTRCNT),NUMVAL)     
+	POINTR = NUMVAL - 64		;A-Z = 65-90     
+	BILINT(POINTR) = BLRINT     
+	GOTO LTRLOP     
+GETCUS,  
+	unlock 1
+	RNTLIN =     
+	ORDLIN =     
+	PURLIN =     
+	MATRX =     
+	ONEITM =     
+	INCR CNT     
+	IF (REPRINT .AND. (CNT.GT.ENDSEQ))     
+	   BEGIN     
+		IF (LSTTYP.NE.'P') CALL LINTOT     
+		GOTO DONE     
+	   END     
+REDTMP,         
+	READ (7,TMPIDX,CNT)		[40=redtmp]	;MEW2     
+    
+	IF (TMPIDX .EQ. ']]]]]]]]]')     
+	   BEGIN     
+		IF (LSTTYP.NE.'P') CALL LINTOT     
+		GOTO DONE     
+	   END     
+	IF (TTYPE.EQ.'P') GOTO PRTPO
+;ms_ops_08007 +
+	If %is_xfer_customer(tcusn) goto getcus
+;
+;	if (tcusn.eq.'1OHIO') .or.       ;Ignore TRANSFER Customer Accounts
+;	&  (tcusn.eq.'2CALIFORNIA') .or. 
+;	&  (tcusn.eq.'3TEXAS') .or.
+;        &  (tcusn.eq.'4NEWYORK') .or. 
+;        &  (tcusn.eq.'5FLORIDA') goto getcus   ;good!
+;ms_ops_08007 +
+
+	IF ((LSTCUS.NE.TCUSN .OR. LSTORD.NE.TORDN) .AND. LSTCUS.NE.'ZZZZZZ')     
+	   BEGIN     
+		CALL LINTOT			;FINISH PRINTING LAST ORDER  
+
+              ;----------------------------------
+	      ;Init Clear variables for next cust order loop
+              ;----------------------------------
+                clear decOverRideRush, strMSG,strSAVResOrCom			 ;jjf_ops07011
+		clear decNewCarrier_Flg, strHldZip9		;jjf_ops07011
+		clear decOLD_SHPLOC, SHPLOC 			;jjf_ops07011
+
+		clear decCBFlagSet				;skh_hmo-07028
+		clear flg$OffContinentalUSA, flg$POBOx, flg$PdtClsOptOut, flg$OntracElig, decTotalWeight, flg$SmrtPstElig, flg$RegCArrElig	;se2_SmrtPst_RCO
+
+		ORDHDR =     
+		NXTDAY =     
+		CNGCAR =     	 		;MEDICARE Insurance Flag !
+		BCKCOD =     
+		clear decSigReqflag	;ms_ontrac
+		PAGE =     
+		PRTHDR = 1     
+	   END     
+
+    ;save custno / order working on for Display			;jjf_ops07011	
+        clear strDispCustOrdNo					 ;jjf_ops07011       
+	strDispCustOrdNo(1:11) = tcusn				;jjf_ops07011
+	strDispCustOrdNo(12:7) = TORDN(4:7),'XXXXXXXXXX'	   ;etd_kendallcrp.04212008      ;jjf_ops07011       
+
+	clear decCBAryCount		;skh_hmo-07028
+
+
+    ;IT IS POSSIBLE TO HAVE TWO ENTRIES FOR THE SAME CUSTOMER AND SAME ORDER     
+    ;ORDER NUMBER SINCE RENTALS AND SALES ARE COMBINED ON SAME ORDER.     
+    ;IF THIS OCCURS JUST SKIP THE RECORD.     
+	IF (LSTCUS.NE.TCUSN .OR. LSTORD.NE.TORDN) ORDER = TORDN     
+	IF (LSTCUS.EQ.TCUSN .AND. LSTORD.EQ.TORDN) GOTO GETCUS
+	call Check_for_Recall				;guy2
+
+	LSTTYP = TTYPE     
+	IF (LSTCUS .EQ. TCUSN) GOTO REDLIN     
+	KEY(1,11) = TCUSN     
+       	LSTCUS = TCUSN     
+REDCUS,         
+	READ (4,CUSMAS,KEY(1,11))	[1=NOCUS,40=REDCUS,53=NOCUS]	;MEW2   
+
+	decPreCarrier	= cusmas.decPreferredCarrier	;jjf_ops07011.2
+;se2_smrtpst_RCO+
+	using cusmas.state select
+	   ('AK','HI','PR','VI','GU','AA','AP','AE','AS','MP','FM','MH','PW')	, 
+	       begin
+		  flg$OffContinentalUSA = 1  
+	       end
+	endusing
+	wrk_shploc = cusmas.cloc
+;se2_smrtpst_RCO-
+
+	GOTO REDCS2     
+NOCUS,     
+	CUSMAS =     
+	NAME = '**** NOT ON FILE ****'     
+REDCS2,        
+	READ (16,CUSMA2,KEY(1,11))	[1=NOCU2,40=REDCS2,53=NOCU2]	;MEW2     
+    
+	GOTO RDCINS     
+NOCU2,     
+	CUSMA2 =     
+RDCINS,     
+	;jsw1 ONERROR GETER19     
+	;jsw1 READ (9,CUSINS,KEY(1,11))     
+	;jsw1 OFFERROR     
+        XCALL EXTRACT_CUSTOMER_INS(KEY(1,11),0,0,0,RETURNED_STATUS)	;jsw1
+;etd07172003	IF (RETURNED_STATUS.EQ.'9') GOTO NOCIS				;jsw1
+
+	GOTO CUSDN     
+NOCIS,     
+	;jsw1 CUSINS =
+	CUSINS_NEW =	;jsw1
+CUSDN,     
+	CAIDCK =     
+	IF (INSTP1.EQ.47.OR.INSTP1.EQ.75) CAIDCK = 1     
+	IF (INSTP2.EQ.47.OR.INSTP2.EQ.75) CAIDCK = 2     
+	IF (INSTP3.EQ.47.OR.INSTP3.EQ.75) CAIDCK = 3     
+	IF (INSTP4.EQ.47.OR.INSTP4.EQ.75) CAIDCK = 4     
+	IF (INSTP5.EQ.47.OR.INSTP5.EQ.75) CAIDCK = 5     
+	IF (INSTP6.EQ.47.OR.INSTP6.EQ.75) CAIDCK = 6     
+REDENT,     
+	IF (ENTFLG .NE. 1) GOTO REDLIN     
+    
+	READ (6,ENTERL,KEY(1,11))	[40=redent,53=entrl]	;mew2           
+
+REDLIN,     
+	CLEAR decOLD_ORUSH, decOLD_ODLVBY		;jjf_OPS07011
+
+	LKEY(1,11) = TCUSN     
+	LKEY(12,18) = TORDN(4:7),'XXXXXXX'     ;etd_kendallcrp.04212008
+	IF (TTYPE .EQ. 'R') GOTO REDRNT     
+    
+	READ (2,ORDHDR,LKEY(1,18))	[1=nohdr,40=redlin,53=nohdr]
+
+
+        decOLD_ORUSH   = ORDHDR.ORUSH				;jjf_OPS07011
+        decOLD_ODLVBY  = ORDHDR.ODLVBY				;jjf_OPS07011
+        strOLD_CARR    = ordhdr.strOcarrier_code		;jjf_OPS07011
+
+	clear strCBOldDelvry,strCBOldRush			;skh_hmo-07028 
+        strCBOldDelvry = decOLD_ODLVBY				;skh_hmo-07028
+	strCBOldRush = decOLD_ORUSH				;skh_hmo-07028
+		       
+	INSRNC =     
+SKPIN,     
+	LSTORD = TORDN     
+	ADRKEY(12,16) = OALTSH     
+	decALTADD_Flg =     
+	IF (ADTYP.EQ.'  ' .AND. ADREC.EQ.0) GOTO CHKALT  
+
+	ADCUS = OCUSNO     
+	decALTADD_Flg = 1     
+REDAD1,     
+	READ (13,ADDRES,ADRKEY)		[1=noadd1,40=redad1,53=noadd1]	;mew2     
+     
+CHKALT,     
+	IF (decALTADD_Flg .EQ. 0) 
+	    BEGIN
+		ADDRES =     
+		ALADD1 = cusmas.ADD1     
+		ALADD2 = cusmas.ADD2     
+		ALCITY = cusmas.CITY     
+		ALSTAT = cusmas.STATE     
+		ALZIP = cusmas.ZIP     
+		ALPHON(1) = cusmas.TELNO 
+
+		addres.strRDI = cusmas.strRDI       ;jjf_ops07011
+	    END     
+;
+;guy1
+;     
+;	FIND QUICKEST LOCATION TO SHIP FROM     
+;     
+;djm_pur211	KZIPT = ALZIP	,'XXXXXXXXX'     
+;djm_pur211	KZIPT(6,9) =  
+	str_zip_in = alzip ,'XXXXXXXXX'	     ;djm_pur211
+	
+	;Set insurance array to determine override location
+	decInsuranceNo1 = instp1	  ;djm_pur211
+	decInsuranceNo2 = instp2          ;djm_pur211
+	decInsuranceNo3 = instp3          ;djm_pur211
+	decInsuranceNo4 = instp4          ;djm_pur211
+	decInsuranceNo5 = instp5          ;djm_pur211
+	decInsuranceNo6 = instp6          ;djm_pur211
+
+	strSAVResOrCom  = addres.strRDI    ;'R'	;jjf_ops07011.2
+        if .not. (strSAVResOrCom) strSAVResOrCom = 'R'     ;jjf_ops07011.2
+        if ADDRES.strRDI .eq. 'Y' strSAVResOrCom = 'R'     ;Residential                ;jjf_ops07011
+        if ADDRES.strRDI .eq. 'N' strSAVResOrCom = 'C'     ;Commerical                 ;jjf_ops07011
+       
+;LM3_INC1140427 - If it's a Pharmacist order bypass the below xcall. Pharmacist order should ship only from location 1(OHIO)
+	if (flg$PhrmOrd .ne. 'Y')		    		    		;LM3_INC1140427
+	   begin 	  							;LM3_INC1140427
+	      xcall calc_ship_loc(str_zip_in,common.curcpy,0,0,shploc,dec_ishot,cusmas.cusno,
+	      &		    In_decInsurance_Array,,cusmas.decpreferredcarrier,
+	      &		    strSAVResOrCom,LocsOrderArray)  ;jdt_edi-224   ;djm_pur211  ;jbl1
+	   end						  		      	;LM3_INC1140427
+
+;djm_pur211REDZIPT,     
+;djm_pur211	READ (ZPTCHN,ZIPTNT,KZIPT)     [1=no_zip,53=no_zip]
+;djm_pur211CHKTIM,     
+;djm_pur211	ZCOUNT =     
+;djm_pur211	SHPLOC =     
+;djm_pur211	SHPDAY =     
+      
+;  - This section was changed to accomodate the zone being shipped to.     
+;    the location with the least amount of days in transit + zone will be     
+;    the selected location to ship from.  This should get us the best rate     
+;    for shipping the products.  - 07/01/2000 - JBL     
+;djm_pur211ZIPLOP,     
+;djm_pur211	INCR ZCOUNT     
+;djm_pur211	IF (ZCOUNT .GT. 10) GOTO have_best
+;djm_pur211	IF (ZTDAYS(ZCOUNT) .LE. 0) GOTO ZIPLOP     
+;djm_pur211	IF ((ZTDAYS(ZCOUNT)+ZZONE(ZCOUNT).LT.SHPDAY) .OR.     
+;djm_pur211&	    ((SHPDAY.EQ.0) .AND. ZTDAYS(ZCOUNT)+ZZONE(ZCOUNT).GT.0)) BEGIN     
+;djm_pur211		SHPLOC = ZCOUNT     
+;djm_pur211		SHPDAY = ZTDAYS(ZCOUNT)+ZZONE(ZCOUNT)     
+;djm_pur211		goto ziplop
+;djm_pur211		END
+;djm_pur211	IF ((ZTDAYS(ZCOUNT)+ZZONE(ZCOUNT).eq.SHPDAY) .and.     
+;djm_pur211&	    ztie.eq.'N') BEGIN     
+;djm_pur211		SHPLOC = ZCOUNT     
+;djm_pur211		SHPDAY = ZTDAYS(ZCOUNT)+ZZONE(ZCOUNT)     
+;djm_pur211		END     
+;djm_pur211	GOTO ZIPLOP     
+;djm_pur211NO_ZIP,     
+;djm_pur211	ZIPTNT =     
+;djm_pur211	SHPLOC =     
+;djm_pur211	SHPDAY =     
+;djm_pur211HAVe_BeST,     
+;djm_pur211	if (instp1.eq.4007 .or. instp6.eq.4007) shploc = 2	;4007 - must ship from CA
+;gb03292004+
+;djm_pur211	if (cusins_new.instp1 .eq. 4005) 
+;djm_pur211	  begin
+;djm_pur211	    shploc = 4 			   ;force all 4005 to ship from NY
+;djm_pur211	  end
+;gb03292004+
+;************************end guy1
+       ; if (have_wafer) shploc = 1			;jjf_wo40554   ;guy2
+       ; if (have_rpd_item) shploc = 1	;jjf_wo40554   ;guy3           ;gb_hmo-141
+	if (flg$MedRecall .or. decBCBSItem) shploc = 1	;jjf_wo40554   ;guy_Recall
+	
+
+RDOLIN,        			
+
+	XCALL W_DISP (G_WNDID,WD_POS,19,1,WD_CLR,WDC_EOL,' ** GET CUST ORDLIN: '+strDispCustOrdNo,wd_updt)
+	XCALL W_DISP (G_WNDID,WD_POS,20,1,WD_CLR,WDC_EOL,' **       with LKEY: '+LKEY,wd_updt)
+	
+	flgDropShip = FALSE				;CBE_SurePst_LS
+
+	READ (1,ORDLIN,LKEY(1,18),keynum:2)	[1=nooln,40=rdolin,53=nooln] 	;mew2	     
+			
+	GOTO CHKLIN     
+READSL,         
+	READS (1,ORDLIN,GETcus)		[1=getcus,40=readsl]  ;mew2     
+
+CHKLIN,     
+	IF (LCUSNO.NE.TCUSN .OR. LORDN.NE.TORDN) GOTO GETCUS     
+	IF (LITMNO(1,1).EQ.'~') GOTO CNTLIN     
+	IF (LQTY.EQ.0) GOTO READSL     
+	IF (LRETRN.EQ.'R') GOTO READSL     
+;	IF (LVERFY.EQ.'Y' .OR. LQTSHP.NE.0 .OR. LBOPRT.EQ.'Y') GOTO READSL     
+	IF (LVERFY.EQ.'Y' .OR. LQTSHP.NE.0) GOTO READSL     
+	IF (LITMNO.EQ.'{}') GOTO READSL	;DEDUCT. LINE ITEM     
+CNTLIN,     
+	IF (PRTHDR.AND.LITMNO(1,1).EQ.'~') GOTO READSL    
+        
+	XCALL W_DISP (G_WNDID,WD_POS,10,1,WD_CLR,WDC_EOL,'Processing....'+lcusno+"/"+%string(lordn,'XXXXXXX'),wd_updt) ;etd4
+  
+;guy1
+;	IF (LITMNO(1,1).NE.'~') SHPLOC = LSHPLC		;SHIP FROM LOCATION
+	IF (LITMNO(1,1).NE.'~' .and. shploc.eq.0) SHPLOC = LSHPLC	;set to lshplc only if shploc is not set
+									;  with zip code logic.
+	if (ordlin.lflscd .eq. 85 .or. ordlin.lflscd .eq.57)	;rs7_dexcom
+	SHPLOC = 1	;rs7_dexcom
+;	if (ltexas) shploc = 3		;guy2	;no longer used
+
+;**************end guy1
+;djm_pur211	IF (SHPLOC .LE. 0) SHPLOC = 1     
+	CALL getinv1     		    				;MEW2    		;mew2
+;
+;---	Start of skh_hmo-07028
+;
+	if (litmno(1,1) .ne. '~') begin
+
+	    ;if (ordlin.flg$cba) xcall mesag ('CBA FLAG IS SET TO: ' + %string(ordlin.flg$cba,'X'),1)
+
+	    if (ordlin.flg$cba .eq. 3) decCBFlagSet = 1
+	    incr decCBAryCount
+	    if (decCBAryCount .gt. 25) decCBAryCount = 25
+	    clear cb_detail
+	    strCBAccount(1,1) = "'"
+	    strCBAccount(2,12) = tcusn
+	    strCBName = cusmas.name
+	    strCBOrder(1,1) = "'"
+	    strCBOrder(2,8) = tordn
+	    strCBItem = ordlin.litmno
+	    strCBDesc = invma1.descr
+;
+    	    repeat
+	      begin
+		decPos = %instr(1,strCBDesc,',')
+		if (decPos .eq. 0) then
+		  exitloop
+		else
+		  strCBDesc(decPos:1) = ' '
+	      end
+;
+	    strCBArray(decCBAryCount) = cb_detail
+	  end
+;
+;---	End of skh_hmo-07028
+;
+	lrecon_loc = invma1.recon_loc					;mew2	
+;	if (have_rpd_item) lrecon_loc = shploc				;jjf_wo40554  ;guy3 gb_hmo-141
+	if (decBCBSitem .or. flg$MedRecall) lrecon_loc = shploc		;jjf_wo40554  ;guy3 gb_hmo-141
+;
+;---	skh1
+;
+	if (lcovr .ne. 'N' .and. (instp2 .ge. 5011 .and. instp2 .le. 5014)) cngcar = 1
+	IF (LCOVR.EQ.'Y'.AND.(INSTP1.GE.5001.AND.INSTP1.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'S'.AND.(INSTP2.GE.5001.AND.INSTP2.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'T'.AND.(INSTP3.GE.5001.AND.INSTP3.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'Q'.AND.(INSTP4.GE.5001.AND.INSTP4.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'V'.AND.(INSTP5.GE.5001.AND.INSTP5.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'Z'.AND.(INSTP6.GE.5001.AND.INSTP6.LE.5004)) CNGCAR = 1     
+	IF (LCOVR.EQ.'C') BEGIN     
+		IF (LCOVR.EQ.'Y'.AND.(INSTP1.GE.5001.AND.INSTP1.LE.5004)) CNGCAR = 1     
+		IF (LCOVR.EQ.'S'.AND.(INSTP2.GE.5001.AND.INSTP2.LE.5004)) CNGCAR = 1     
+		IF (LCOVR.EQ.'T'.AND.(INSTP3.GE.5001.AND.INSTP3.LE.5004)) CNGCAR = 1     
+		IF (LCOVR.EQ.'Q'.AND.(INSTP4.GE.5001.AND.INSTP4.LE.5004)) CNGCAR = 1     
+		IF (LCOVR.EQ.'V'.AND.(INSTP5.GE.5001.AND.INSTP5.LE.5004)) CNGCAR = 1     
+		IF (LCOVR.EQ.'Z'.AND.(INSTP6.GE.5001.AND.INSTP6.LE.5004)) CNGCAR = 1     
+		END     
+
+;jbl1	if (cngcar .eq. 1 .and. odlvby .eq. 5 .and. (shploc .eq. 3 .or. shploc .eq. 4)) begin
+;LM3_INC1140427 - Adding an extra condition to bypass the below xcall statement if it's a pharmacist order. 
+	if (cngcar .eq. 1 .and. odlvby .eq. 5 .and. shploc .ge. 3 
+	&   .and. flg$PhrmOrd .ne. 'Y')			;LM3_INC1140427
+	   begin
+
+	     strSAVResOrCom  = addres.strRDI    ;'R'	;jjf_ops07011.2    ;jdt_edi-224
+	     if .not. (strSAVResOrCom) strSAVResOrCom = 'R'     ;jjf_ops07011.2
+	     decCarrier = 4     			       		   ;jdt_edi-224
+	    xcall calc_ship_loc(str_zip_in,common.curcpy,0,0,shploc,dec_ishot,
+	    &			cusmas.cusno,In_decInsurance_Array,2,decCarrier,
+	    &			strSAVResOrCom,LocsOrderArray) ;jdt_edi-224    ;djm_pur211   ;jbl1
+	   end
+;
+;
+;---	end skh1
+;
+	IF (PRTHDR) CALL LINE1  ;PRINTS HEADER INFO     
+	RNTSAL = 'S'     
+;mew1	CALL LINORD		;SETS PLINE & PRINTS LINE ITEMS
+	call setlin		;mew1
+	LBOPRT = 'P'     
+	IF (LITMNO.EQ.'43ND'.AND.LVERFY.NE.'Y') NXTDAY = 1     
+	IF (LITMNO.EQ.'43NDA'.AND.LVERFY.NE.'Y') NXTDAY = 2     
+;lim_edi-224	IF (LITMNO.EQ.'43NDEA'.AND.LVERFY.NE.'Y') NXTDAY = 3     
+	IF (LITMNO.EQ.'43NDS'.AND.LVERFY.NE.'Y') NXTDAY = 4     
+	IF (LITMNO.EQ.'43SD'.AND.LVERFY.NE.'Y') NXTDAY = 5     
+;lim_edi-224	IF (LITMNO.EQ.'43SDN'.AND.LVERFY.NE.'Y') NXTDAY = 6     
+	IF (LITMNO.EQ.'43TDS'.AND.LVERFY.NE.'Y') NXTDAY = 7  
+	IF (LITMNO.EQS.'43SDA'.AND.LVERFY.NE.'Y') NXTDAY = 3                    ;lim_edi-224
+;lim_edi-224	IF (LITMNO.EQ.'43NCND'.AND.LVERFY.NE.'Y') NXTDAY = 1     
+
+	if (flg$MedRecall) NxtDay = 5					;guy_MedRecall
+
+        IF (LITMNO.EQ.'40'.AND.LVERFY.NE.'Y') BCKCOD = 1     
+	if (ordlin.decsignaturerequired .and. LVERFY .ne. 'Y') decSigReqflag = 1	;ms_ontrac
+        IF (LITMNO.EQ.'43DROP') flgDropShip = TRUE	;CBE_SurePst_LS     
+;	IF (LCOVR.EQ.'Y'.AND.(INSTP1.GE.5001.AND.INSTP1.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'S'.AND.(INSTP2.GE.5001.AND.INSTP2.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'T'.AND.(INSTP3.GE.5001.AND.INSTP3.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'Q'.AND.(INSTP4.GE.5001.AND.INSTP4.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'V'.AND.(INSTP5.GE.5001.AND.INSTP5.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'Z'.AND.(INSTP6.GE.5001.AND.INSTP6.LE.5004)) CNGCAR = 1     
+;	IF (LCOVR.EQ.'C') BEGIN     
+;		IF (LCOVR.EQ.'Y'.AND.(INSTP1.GE.5001.AND.INSTP1.LE.5004)) CNGCAR = 1     
+;		IF (LCOVR.EQ.'S'.AND.(INSTP2.GE.5001.AND.INSTP2.LE.5004)) CNGCAR = 1     
+;		IF (LCOVR.EQ.'T'.AND.(INSTP3.GE.5001.AND.INSTP3.LE.5004)) CNGCAR = 1     
+;		IF (LCOVR.EQ.'Q'.AND.(INSTP4.GE.5001.AND.INSTP4.LE.5004)) CNGCAR = 1     
+;		IF (LCOVR.EQ.'V'.AND.(INSTP5.GE.5001.AND.INSTP5.LE.5004)) CNGCAR = 1     
+;		IF (LCOVR.EQ.'Z'.AND.(INSTP6.GE.5001.AND.INSTP6.LE.5004)) CNGCAR = 1     
+;		END     
+      
+WRTORD,     
+	IF (REPRINT) GOTO READSL     
+;guy1
+;djm_pur211	if (shploc .le. 0) shploc = lshplc
+check_loctn,
+
+
+      ;------------------------------------
+      ;if WRK SHPLOC is not equal to ordlin
+      ;   Delete / Store new ORDLIN with new Location to ship Item from
+      ;------------------------------------
+	lrecon_loc = invma1.recon_loc			;mew2
+	if (lshplc .ne. shploc) begin
+	    new_binno =
+	    call get_new_bin_numb
+	    if (new_binno .ne. '        ') lbinno = new_binno
+
+	;---------------------					;jjf_ops07011	
+	;If Locn revert back to Origianl Order Loction		;jjf_ops07011	
+	;Then Get New Carrier !!				;jjf_ops07011	
+	;---------------------
+
+	    decOLD_SHPLOC = lshplc		;save OLD Loc for debugging ;jjf_ops07011	
+	    decNewCarrier_Flg = 1		;jjf_ops07011	
+	    lshplc = SHPLOC  
+
+	    CALL P810_Write_ITEM_Report
+
+	    call delete_store_ordlin
+	    goto readsl
+	    end
+;********************end guy1
+   
+	if (%trimz(ordlin.strOrderLineId).eq.0)	  then      		;OI-1568
+	  begin								;MB8_DFCT0029481
+;MB8_DFCT0029481+
+	    call delete_store_ordlin
+	  end
+	else
+;MB8_DFCT0029481+
+	  WRITE (1,ORDLIN)	[40=wrtord]	;mew2
+    
+	GOTO READSL     
+;guy1
+delete_store_ordlin,
+	if (%trimz(ordlin.strOrderLineId).eq.0)				;OI-1568
+	    xcall getNextOrdlinId(oln2chn, , ordlin.strOrderLineId)	;OI-1568
+	store (oln2chn,ordlin)
+	delete (1)
+	clear ordlin.strOrderLineId					;OI-1568
+	return
+
+get_new_bin_numb,
+	call get_invmas
+	new_binno = lbinno
+	if (nbinno(2) .ne. '        ') new_binno = nbinno(2)
+	if (nbinno(1) .ne. '        ') new_binno = nbinno(1)
+	return
+
+get_invmas,
+	CLEAR INLOC		;jjf_ops07011
+	INLOC = shploc		;NEW SHIP LOC
+	INNUM = LITMNO     
+	INREC = 2
+	READ (18,INVMA2,INVKEY)     [1=no_invmas,53=no_invmas]
+	return
+no_invmas,
+	invma2 =
+	return
+      
+;*********************end guy1
+getinv1,     		    				    		;mew2
+	INLOC = LSHPLC     						;mew2
+	INNUM = LITMNO     						;mew2
+	INREC = 1     							;mew2
+	READ (18,INVMA1,INVKEY)		[1=noinv1,40=getinv1,53=noinv1]	;mew2 
+
+	RETURN  				;MEW2
+noinv1,						;mew2
+	IF (LITMNO(1,1).NE.'~')
+	    XCALL W_DISP (G_WNDID,WD_POS,12,1,WD_CLR,WDC_EOL,'NO FIND ITEM...'+LITMNO+"/"+%string(LSHPLC,'XX'),wd_updt) ;etd4
+	invma1 = 				;mew2	
+	return					;mew2
+
+REDRNT,     
+	FRST = 1     
+   
+	READ (3,RNTLIN,LKEY(1,11))	[40=redrnt]	;mew2;KMS1
+
+  	GOTO CHKRNT     
+RDSRNT,        
+	READS (3,RNTLIN,GETcus)	[1=getcus,40=rdsrnt]	;mew2;KMS1     
+
+CHKRNT,     
+	IF (RLITM.EQ.'~' .OR. RLITM.EQ.'{}') GOTO RDSRNT     
+	IF (RLRNTN .NE. TCUSN) GOTO GETCUS     
+	IF (RLORDN .NE. TORDN) GOTO RDSRNT     
+	OSVCRP = RSVCRP     
+	IF (FRST) BEGIN     
+		ADDRES =     
+		ALADD1 = ADD1     
+		ALADD2 = ADD2     
+		ALCITY = CITY     
+		ALSTAT = STATE     
+		ALZIP = ZIP     
+		ALPHON(1) = TELNO  
+
+		addres.strRDI = cusmas.strRDI       ;jjf_ops07011
+		END     
+	FRST =     
+	IF (RLQTY.EQ.0) GOTO RDSRNT     
+	IF (RVERFY.EQ.'Y'.OR. RLQSHP.NE.0 .OR. RBOPRT.EQ.'Y') GOTO RDSRNT     
+	IF (PRTHDR) CALL LINE1		;PRINTS HEADER INFO     
+	LQTY = RLQTY     
+	RNTSAL = 'R'     
+	LITMNO = RLITM     
+	LLSERN = RLSERN     
+	LDESCR = RLDESC     
+	LPRICE = RLFRNT     
+	LCOVR = RLCOVR     
+	LCMNT = RCMNT     
+;mew1	CALL LINORD			;SETS PLINE & PRINTS LINE ITEM     
+	call setlin			;mew1
+	RBOPRT = 'P'
+	RENTAL = 1 
+	lrecon_loc = invma1.recon_loc		;mew2
+WRTRNT,     
+	IF (REPRINT) GOTO RDSRNT     
+    
+	WRITE (3,RNTLIN)		[40=wrtrnt]	;mew2     
+    
+	GOTO RDSRNT     
+;     
+; 	*** PRINTS OUT HEADER INFO ON TICKET ***     
+;     
+LINE1,     
+	IF (NEWPAG) GOTO HAVPTR     
+	WCHFRM =     
+	WCHPTR = 4                      ;SET TO PRINT ON QUEUE #4     
+	SELPRT = AVPR(WCHPTR)     
+	OUT(1,5) = 'ESP:'     
+	IF (TCOMP .EQ. 20) OUT(1,5) = 'MSP:'     
+	IF (TCOMP .EQ. 20) OUT(1,5) = 'ASP:'     
+	IF (TCOMP .EQ. 4) OUT(1,5) = 'ASP:'     
+	OUT(6,16) = TCUSN     
+	OUT(17,17) = '_'     
+	OUT(18,24) = TORDN	,'XXXXXXX'
+;	xcall time(time)
+;	out(25,32) = time,'XXXXXXXX'
+	OUT(25,28) = '.ORD'
+	out = %collapse(out)
+	SAVOUT = OUT
+	SAVORD = TORDN     
+;	XCALL RDYPR (OUT,WCHPTR,WCHFRM)     
+	open (14,O:P,out)
+		;	SET TOP  MARGIN     
+;;	XCALL W_DISP (G_WNDID + ESC + '&l1E')     
+		;  	PORTRAIT, LINE SPACING 8 LINES PER INCH     
+	display (14,ESC + '&l0O' + ESC + '&l8D')     
+	     
+		;  	LINE PRINTER 16 PRINT     
+	display (14,ESC + '(10U' + ESC + '(s0p16.67h8.5v0s0b0T')     
+	display (14,ESC + '&l1H' + ESC + '&l2A')		;AUTOSHIP ORDERS - MAKE LETTER SIZE - PLAIN     
+;	IF (SHPLOC .EQ. 1) BEGIN     
+;		USING TCOMP SELECT     
+;			(1),	XCALL W_DISP (G_WNDID + ESC + '&l5H' + ESC + '&l3A')        ;EDGEPARK TICKETS - TRAY 1     
+;			(20),	XCALL W_DISP (G_WNDID + ESC + '&l4H' + ESC + '&l3A')	;MERIDIA TICKETS - TRAY 3     
+;			ENDUSING     
+;		IF ((CREFCD.GE.'CC0000' .AND. CREFCD.LE.'CC9999') .OR. COMPY.EQ.30)     
+;&		     XCALL W_DISP (G_WNDID + ESC + '&l8H' + ESC + '&l3A')     
+;		END     
+	XCALL GETCM(COMMON)     
+HAVPTR,     
+	LINSIZ = 132     
+	PASS = 1     
+	TOPHLF =     
+	DUPCNT =     
+	NEWPAG =     
+	PRTHDR =     
+	LCOUNT =     
+	AUDLIN(1) =     
+	AUDLIN(2) =     
+	AUDLIN(3) =     
+	SHPCMT =     
+	SPCPRT =     
+	CALL TOPFRM		;PRINTS ALL INFO FOR TOP OF FORM     
+	RETURN     
+      
+TOPFRM,     
+	INCR PAGE     
+	PLINE (46,90) = 'BUSINESS HOURS: WEEKDAYS  8:30am - 5:30pm EST'     
+	PLINE (95,101) = 'PAGE:  '     
+	PLINE (104,105) = PAGE ,'ZX'     
+	IF (COMPY.EQ.1) PLINE (120,122) = 'EPS'     
+	IF (COMPY.EQ.20) PLINE (120,122) = 'MRD'     
+	IF (COMPY .EQ. 30) PLINE (120,122) = 'AMD'     
+	IF (COMPY .EQ. 20) GOTO PARTOP     
+	CALL PRINT     
+	PLINE (1,25) = '1810 SUMMIT COMMERCE PARK'     
+	IF (COMPY .EQ. 30) PLINE(1,29) = 'SERVICES PROVIDED BY AMERIMED'     
+	PLINE (46,58) = 'SERVICE REP -'     
+	PLINE (60,62) = LSVCRP     
+	PLINE (72,81) = CREFCD     
+	PLINE (96,102) = 'SEQ. #:'     
+	PLINE (104,108) = CNT	,'ZZZZX'     
+	PLINE(112,132) = 'PHONE: (330) 963-6996'     
+ 	IF (COMPY .EQ. 30) PLINE(112,132) = 'PHONE: (330) 963-4748'     
+	CALL PRINT     
+LINE10,     
+	PLINE (1,25) = 'TWINSBURG, OH  44087     '     
+	IF (COMPY .EQ. 30) PLINE(1,25) = '1810 SUMMIT COMMERCE PARK'     
+	PLINE (46,56) = 'ORDER DATE:'     
+	HLDDAT(1,4) = LSRDAT(5,8)     
+	HLDDAT(5,8) = LSRDAT(1,4)     
+	IF (HLDDAT) PLINE(58,67) = HLDDAT	,'XX/XX/XXXX'     
+	IF (HLDDAT .EQ. 0) PLINE(58,67) = '__/__/____'     
+	PLINE(112,132) = '       (800) 321-0591'     
+	IF (COMPY .EQ. 30) PLINE(112,132) = '       (800) 963-6448'     
+	CALL PRINT     
+ 	IF (COMPY .EQ. 30) PLINE(1,25) = 'TWINSBURG, OH  44087     '     
+	PLINE (46,56) = 'DELV. DATE:'     
+	PLINE (58,67) = '__/__/____'     
+	CALL PRINT     
+LINE13,     
+	IF (ALCARE.NE.'          ') PLINE (1,25) = NAME     
+	IF (ALCARE.NE.'          ') PLINE (83,121) = NAME     
+	IF (OPONO.NE.'          ') PLINE (46,53) = 'AUTH. #:'     
+	IF (OPONO.NE.'          ') PLINE (54,73) = OPONO     
+	PLINE(124,132) = 'BACKORDER'     
+	CALL PRINT     
+LINE15,     
+	PLINE (1,25) = ALCARE     
+	PLINE (46,53) = 'ORDER #:'     
+	PLINE (55,61) = TORDN,'XXXXXXX'     
+	PLINE (83,121) = ALCARE     
+	IF (ALCARE.EQ.'          ') PLINE (1,25) = NAME     
+	IF (ALCARE.EQ.'          ') PLINE (83,121) = NAME     
+	CALL PRINT     
+LINE16,     
+	PLINE (1,25) = ALADD1     
+	XCALL CNFMT (CUSNO,CUSFMT)     
+	PLINE (46,51) = 'ACCT: '     
+	PLINE (52,66) = CUSFMT     
+	PLINE (83,121) = ALADD1     
+	CALL PRINT     
+LINE17,     
+	PLINE (1,25) = ALADD2     
+	PLINE (83,121) = ALADD2     
+	CALL PRINT     
+LINE18,     
+	PLINE (1,15) = ALCITY     
+	PLINE (19,20) = ALSTAT     
+	IF (ALZIP(6,9) .EQ. 0) PLINE (23,27) = ALZIP(1,5)	,'XXXXX'     
+	IF (ALZIP(6,9) .NE. 0) PLINE (23,32) = ALZIP	,'XXXXX-XXXX'     
+	PLINE (83,115) = PLINE(1,32)     
+	CALL PRINT     
+LINE19,     
+	PLINE(1,14) = ALPHON(1) ,'(ZZZ) XXX-XXXX'     
+	PLINE(83,86) = INSTP1	,'ZZZX'     
+	IF (INPAYS(1).EQ.2) PLINE (82,82) = '*'     
+	PLINE(88,91) = INSTP2	,'ZZZX'     
+	IF (INPAYS(2).EQ.2) PLINE (87,87) = '*'     
+	PLINE(93,96) = INSTP3	,'ZZZX'     
+	IF (INPAYS(3).EQ.2) PLINE (92,92) = '*'     
+	PLINE(98,101) = INSTP4	,'ZZZX'     
+	IF (INPAYS(4).EQ.2) PLINE (97,97) = '*'     
+	PLINE(103,106) = INSTP5	,'ZZZX'     
+	IF (INPAYS(5).EQ.2) PLINE (102,102) = '*'     
+	PLINE(108,111) = INSTP6	,'ZZZX'     
+	IF (INPAYS(6).EQ.2) PLINE (107,107) = '*'     
+	PLINE (120,123) = 'LOC:'     
+	PLINE (125,126) = SHPLOC	,'XX'     
+	CALL PRINT     
+	GOTO TOPDNE     
+;     
+;	SPECIAL COMPANY SECTION     
+;     
+PARTOP,     
+	FIGURS =     
+;mew2	ONERROR GETER28     
+	READ (5,COMPNY,COMPY)		[1=nocpy,40=partop,53=nocpy]	;mew2     
+;mew2	OFFERROR     
+	GOTO HAVCPY     
+NOCPY,     
+	COMPNY =     
+	CONAME = '*** COMPANY UNFINED ***'     
+HAVCPY,     
+	CALL PRINT     
+	PLINE(1,25) = COADD1     
+	PLINE (46,58) = 'SERVICE REP -'     
+	PLINE (60,62) = LSVCRP     
+	PLINE(112,132) = 'PHONE: (330) 963-6996'     
+	CALL PRINT     
+	PLINE(1,15) = COCITY     
+	PLINE(17,18) = COSTAT     
+	PLINE(20,29) = COZIP	,'XXXXX-XXXX'     
+	IF (COZIP(6,9) .EQ. 0) PLINE(26,29) =     
+	PLINE (46,56) = 'ORDER DATE:'     
+	HLDDAT(1,4) = LSRDAT(5,8)     
+	HLDDAT(5,8) = LSRDAT(1,4)     
+	IF (HLDDAT) PLINE(58,67) = HLDDAT	,'XX/XX/XXXX'     
+	IF (HLDDAT .EQ. 0) PLINE(58,67) = '__/__/____'     
+	PLINE(112,132) = '       (800) 321-0591'     
+	CALL PRINT     
+	PLINE (46,56) = 'DELV. DATE:'     
+	PLINE (58,67) = '__/__/____'     
+	CALL PRINT     
+	IF (ALCARE .NE. '          ') PLINE(1,25) = NAME     
+	IF (OPONO .NE. '          ') PLINE(41,48) = 'AUTH. #:'     
+	IF (OPONO .NE. '          ') PLINE(49,68) = OPONO     
+	PLINE(124,132) = 'BACKORDER'     
+	CALL PRINT     
+	PLINE(1,25) = ALCARE     
+	PLINE (46,53) = 'ORDER #:'     
+	PLINE (55,61) = TORDN,'XXXXXXX'     
+	PLINE(83,121) = ALCARE     
+	IF (ALCARE .EQ. '          ') PLINE(1,25) = NAME     
+	IF (ALCARE .EQ. '          ') PLINE(83,121) = NAME     
+	CALL PRINT     
+	PLINE(1,25) = ALADD1     
+	XCALL CNFMT (CUSNO,CUSFMT)     
+	PLINE (46,60) = CUSFMT     
+	PLINE(83,121) = ALADD1     
+	CALL PRINT     
+	PLINE(1,25) = ALADD2     
+      
+	if (caidck) pline(46,60) = inplcy(caidck)     
+	if (caidck) pline(61,61) = '-'     
+	if (caidck) pline(62,63) = inmcrc,'XX'     
+      
+	PLINE(83,121) = ALADD2     
+	CALL PRINT     
+	PLINE(1,15) = ALCITY     
+	PLINE(19,20) = ALSTAT     
+	IF (ALZIP(6,9) .EQ. 0) PLINE(23,27) = ALZIP(1,5)	,'XXXXX'     
+	IF (ALZIP(6,9) .NE. 0) PLINE(23,32) = ALZIP	,'XXXXX-XXXX'     
+	PLINE (83,112) = PLINE (1,32)     
+	CALL PRINT     
+	IF (ODLVBY.EQ.3) PLINE(1,14) = ALPHON(1) ,'(ZZZ) XXX-XXXX'     
+	PLINE(83,86) = INSTP1	,'ZZZX'     
+	IF (INPAYS(1).EQ.2) PLINE (82,82) = '*'     
+	PLINE(88,91) = INSTP2	,'ZZZX'     
+	IF (INPAYS(2).EQ.2) PLINE (87,87) = '*'     
+	PLINE(93,96) = INSTP3	,'ZZZX'     
+	IF (INPAYS(3).EQ.2) PLINE (92,92) = '*'     
+	PLINE(98,101) = INSTP4	,'ZZZX'     
+	IF (INPAYS(4).EQ.2) PLINE (97,97) = '*'     
+	PLINE(103,106) = INSTP5	,'ZZZX'     
+	IF (INPAYS(5).EQ.2) PLINE (102,102) = '*'     
+	PLINE(108,111) = INSTP6	,'ZZZX'     
+	IF (INPAYS(6).EQ.2) PLINE (107,107) = '*'     
+	CALL PRINT     
+TOPDNE,     
+	CALL PRTHDR     
+	RETURN     
+;     
+;     *** SETS PLINE & PRINTS ORDER     
+;
+
+SETLIN,     		     		;mew1
+	INLOC = LSHPLC     
+	INNUM = LITMNO     
+	INREC = 1     
+    
+	READ (18,INVMA1,INVKEY)		[1=noinv,40=setlin,53=noinv]	;mew2     
+    
+get_invma2,     
+	inrec = 2     
+	read (18,invma2,invkey) [1=noinvma2,40=get_invma2,53=noinvma2]     
+
+	strHAZ_SEVERITY_FLG  = invma2.Hazard          		;jjf_OPS07011
+
+;se2_smrtpst_RCO+
+get_invma3, 
+	inrec = 3
+	read (18,invma3,invkey) [1=noinvma2,40=get_invma2,53=noinvma2]
+;se2_smrtpst_RCO-
+
+LINORD,     
+	IF (LITMNO.EQ.'~') GOTO SETCMT     
+	IF (LITMNO.EQ.'46        ') MNTFLG = 1 
+getvnd,    
+     	read (vndcod_chn,vndcod,invma1.vnditmnum) 	[1=novnd,40=getvnd,53=novnd]	;mew2
+
+linordc,
+	vndnam = vnddsc
+	GOTO ivcont     
+NOVND,     
+	VNDNAM(1,6) = '*NONE*'		;mew1^
+
+IVCONT,     
+	CALL MAINPT     
+	RETURN     
+MAINPT,     
+   	PLINE (1,5) = LQTY  ,'ZZZX-'     
+	PLINE (7,11) = '_____'     
+	if (qtyonh.gt.0) pline (7,7) = '?'     
+	PBINNO = LBINNO [LEFT]     
+	IF (PBINNO(1,1).EQ.' ') PBINNO(1,8) = LBINNO(2,8)     
+	PLINE (15,16) = PBINNO(1,2)     
+	IF (PBINNO(3,4).NE.'  ') PLINE (17,17) = '-'     
+	PLINE (18,19) = PBINNO(3,4)     
+	IF (PBINNO(5,6).NE.'  ') PLINE (20,20) = '-'     
+	PLINE (21,22) = PBINNO(5,6)     
+	IF (PBINNO(7,8).NE.' ') PLINE (23,23) = '-'     
+	PLINE (24,25) = PBINNO(7,8)     
+;	IF (LSHPLC.EQ.2) BEGIN     
+;		PLINE (15,18) = PBINNO(1,4)     
+;		PLINE (19,19) = '0'	;ADDING ADDITIONAL CHARACTER FOR MDC     
+;		PLINE (20,22) = PBINNO(5,7)     
+;		IF (PBINNO(8,8).NE.' ') PLINE (15,22) = PBINNO     
+;		PLINE (23,25) =     
+;		END     
+	LOCBIN =     
+	IF (INVENT .NE. 'N') BEGIN     
+		IF (LBINNO(1,2) .EQ. 'FA') FSTFLA = 1     
+		IF (LBINNO(1,2) .EQ. 'FB') FSTFLB = 1     
+		IF (LBINNO(1,2).EQ.'FC' .AND. LBINNO(1,2).EQ.'FD') FSTFLC = 1     
+		IF (LBINNO(1,1) .EQ. 'A') ZONEA = 1     
+		IF (LBINNO(1,1) .EQ. 'B') ZONEB = 1     
+		IF (LBINNO(1,1) .EQ. 'C') ZONEB = 1     
+		IF (LBINNO(1,1) .EQ. 'D') ZONED = 1     
+		IF (LBINNO(1,1) .EQ. 'E') ZONEE = 1     
+		IF (LBINNO(1,1).NE.'A' .AND. LBINNO(1,1).NE.'B' .AND.     
+&		    LBINNO(1,1).NE.'C' .AND. LBINNO(1,1).NE.'D' .AND.     
+&		    LBINNO(1,1).NE.'E' .AND. LBINNO(1,1).NE.'E') ZONEBLK = 1     
+      
+		END     
+	IF (ZONEBLK) MATRX(20,20) = '1'     
+	IF (ZONEA) MATRX(19,19) = '1'     
+	IF (ZONEB) MATRX(18,18) = '1'     
+	IF (ZONED) MATRX(17,17) = '1'     
+	IF (ZONEE) MATRX(16,16) = '1'     
+	IF (FSTFLA) MATRX(15,15) = '1'     
+	IF (FSTFLB) MATRX(14,14) = '1'     
+	IF (FSTFLC) MATRX(13,13) = '1'     
+;     
+;	ONLY SET MATRIX ARRAY FOR LOC #1     
+;     
+	IF (LSHPLC .NE. 1) MATRX =     
+	IF (LITMNO.NE.'~' .AND. LITMNO(1,2).NE.'{}') BEGIN     
+		IF (ONEITM .EQ. 0) ONEITM = 1     
+		IF (ONEITM .EQ. 1) ONEITM = 2     
+		END     
+	PLINE (27,41) = LITMNO     
+	IF (LHOWSL .NE. ' ') BEGIN     
+		XCALL INSTR(1,LITMNO,' ',BLKPOS)		;mew1     
+		IF (BLKPOS .EQ. 0) BLKPOS = 16     		;mew1
+		IF (BLKPOS) BEGIN     
+			PLINE(25+BLKPOS,25+BLKPOS) = '/'     
+			PLINE(26+BLKPOS,26+BLKPOS) = LHOWSL     
+			END     
+		END     
+;scj_acc-14	IF (LTXFLG .EQ. 'Y') PLINE(44,45) = 'TX'     		;mew1 start
+	if (ordlin.decTaxAmount) PLINE(44,45) = 'TX'	;scj_acc-14
+	IF (LMTOVR) PLINE (51,51) = 'L'     
+	if (ordlin.lmtovr .eq. 2) PLINE (52,52) = 'L'  ;tml_bill447 The symbol is (LL) for Combined Limits
+	IF (LKITBL) PLINE(52,52) = 'K'		;UROLOGICAL KIT ITEM - DETAIL     
+	IF (LKITBL .EQ. 1) PLINE(53,53) = 'M'	;UROLOGICAL KIT ITEM - MAIN     
+	IF (IFLSCD.EQ.03.AND.IMED.EQ.'Y') PLINE (54,54) = '/'     
+	IF (LOVRID.EQ.1) PLINE(55,55) = 'A'     
+	IF (LOVRID.EQ.2) PLINE(55,55) = 'A'     
+	IF (LOVRID.EQ.3) PLINE(55,55) = 'F'     
+	IF (LOVRID.EQ.4.OR.LOVRID.EQ.5) PLINE(56,57) = 'AF'     
+	IF (MIL50) PLINE(58,58) = '5'     
+	PLINE (60,89) = LDESCR     				;mew1 end
+;etd1	PLINE (96,102) = INPROC(8)		;SOLD BY     
+	call get_ediuom             ;etd1     
+	pline (96,102) = new_inproc8     ;etd1     
+      
+	AMOUNT = LPRICE * LQTY     
+	PLINE (111,117) = LPRICE ,'ZZZX.XX'     
+	IF (LDSCNT) BEGIN     
+		PLINE(118,118) = '*'     
+		DISCNT = 1     
+		END     
+	PLINE (121,128) = AMOUNT ,'ZZZX.XX-'     
+       	PLINE (130,130) = LCOVR     
+	IF (LCOVR .EQ. 'C') PLINE (131,131) = ':'     
+	IF (LCOVR .EQ. 'C') PLINE (132,132) = LCMPIN     
+NOAMT,     
+	IF (PLINE(1,79).NE.BLANK(1,79)) BEGIN     
+		CALL PRINT     
+		INCR LCOUNT     
+		END     
+	IF (LITMNO.EQ.'~' .OR. AMOUNT.EQ.0) RETURN     
+	SUBTOT = SUBTOT + AMOUNT     
+	TAX =     
+;scj_acc-14	IF (LTXFLG.EQ.'Y') TAX = (AMOUNT*OTAX)#5     
+	tax = ordlin.decTaxAmount	;scj_acc-14
+	SLSTAX = SLSTAX + TAX     
+	RETURN     
+      
+SETCMT,     
+	PLINE (1,80) = LCMNT     
+	CALL PRINT     
+	INCR LCOUNT     
+	CALL PRINT     
+	INCR LCOUNT     
+	RETURN     
+      
+LINTOT,     
+	IF (PRTHDR) GOTO NOPRT				;NO VALID LINES FOUND     
+	IF (YECMT.EQ.'Y') PLINE (1,80) = '********************************************************************************'     
+	PLINE (121,127) = '----------'     
+	CALL PRINT     
+	INCR LCOUNT     
+	IF (YECMT.EQ.'Y') BEGIN     
+	       	PLINE (1,1) = '*'     
+		PLINE (5,75) = 'TO RECEIVE YOUR YEAR-END SUPPLY ORDER BY JAN 1,    , PLEASE PLACE YOUR'     
+		PLINE (52,55) = TODAY(5,8)+1,'XXXX'     
+		PLINE (80,80) = '*'     
+		END     
+	PLINE (111,119) = 'SUBTOTAL:'     
+       	PLINE (120,128) = SUBTOT ,'ZZ,ZZX.XX-'     
+	CALL PRINT     
+	INCR LCOUNT     
+	IF (YECMT.EQ.'Y') BEGIN     
+		PLINE (1,1) = '*'     
+		PLINE (5,75) = 'ORDER ON OR BEFORE DEC. 20,    .  PLEASE CALL YOUR CUSTOMER SERVICE   '     
+		PLINE (32,35) = TODAY(5,8),'XXXX'     
+		PLINE (80,80) = '*'     
+		END     
+	PLINE (111,119) = 'TAX     :'     
+	PLINE (121,128) = SLSTAX ,'ZZX.XX-'     
+	CALL PRINT     
+	INCR LCOUNT     
+      
+	IF (COMPY.EQ.20 .AND. (odlvby.NE.4.and.odlvby.ne.6)) LCOUNT = LCOUNT - 1     
+	IF (YECMT.EQ.'Y') BEGIN     
+		PLINE (1,1) = '*'     
+		PLINE (5,75) = 'REPRESENTATIVE WITH ANY QUESTIONS.                                    '     
+		PLINE (80,80) = '*'     
+		END     
+	PLINE (111,118) = 'TOTAL   :'     
+	TOTAL = SUBTOT + SLSTAX     
+	PLINE (119,128) = TOTAL ,'ZZ,ZZX.XX-'     
+	CALL PRINT     
+	INCR LCOUNT     
+	IF (CAIDCK) BEGIN     
+		PLINE (23,55) = 'INTERNAL AUDIT CHECK ____________'     
+		AUDLIN(1) = PLINE(22,61)     
+		PLINE =     
+		END     
+	IF (CAIDCK) BEGIN     
+		PLINE (22,22) = '('     
+		IF (CAIDCK) PLINE (29,30) = 'SE'     ;NO 'CAID CARD     
+		PLINE (40,40) = ')'     
+		PLINE (41,60) = 'DATE  ____/____/____'     
+		AUDLIN(2) = PLINE(22,61)     
+		PLINE =     
+		END     
+	CALL PRINT   
+        ;mfh_wo233124  -start
+		if (instp1.lt.5000 .or. instp1.gt.5999)  .and. 
+                 &  (instp2.lt.5000 .or. instp2.gt.5999)  .and.
+                 &  (instp3.lt.5000 .or. instp3.gt.5999) 
+      		begin
+		  PLINE (12,68) = '  NOTE: PRODUCT RETURNS NOT ACCEPTED AFTER 30 DAYS!!     '     
+		  CALL PRINT
+    		end
+	;mfh_wo233124 -end
+	PLINE (1,61) = '---------------- CASH DUE UPON DELIVERY ----------------'     
+	CALL PRINT     
+	PLINE (1,18) = '----NON COVERED---'     
+	PLINE (21,35) = 'Co-Ins/Co-Pay '    ;jdt_wo141471 
+	PLINE (37,43) = 'DEDUCT.'     
+	PLINE (48,50) = 'TAX'     
+	PLINE (57,61) = 'TOTAL'     
+	CALL PRINT     
+	CALL PRINT     
+	PLINE (6,13) = NONSLS,'Z,ZZX.XX-'     
+	PLINE (24,30) = TOT20 ,'ZZX.XX-'     
+	PLINE (37,43) = TOTDED	,'ZZX.XX-'     
+	PLINE (45,51) = SLSTAX ,'ZZX.XX-'     
+	CUSTOT = NONSLS + TOT20  + SLSTAX + TOTDED     
+	PLINE (53,62) = CUSTOT ,'ZZ,ZZX.XX-'     
+	CALL PRINT     
+	IF (OPAYBY) BEGIN     
+		PLINE (74,84) = 'PAYING BY :'     
+		PLINE (86,97) = '************'     
+		PLINE (99,106) = OCHKNO     
+		END     
+	CALL PRINT     
+LNTECH,     
+	if (decBCBSItem .and. decNewShipVia)                 ;gb_hmo-141+
+	  begin
+	    ordhdr.odlvby = 7  ;chg to 7 to NOT print Postal on Printout
+	    ordhdr.orush = 1   ;Ship BCBS Test Kit from OHIO Locn - 1st Class Postal
+
+	    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** BCBS chgd to Postal: '+strDispCustOrdNo,wd_updt)
+
+	    decNewCarrier_Flg = 1		;jjf_ops07011
+            strMSG = 'BCBS TEST KIT **'
+	    CALL P815_Write_ODLVBY_Report       ;jjf_ops07011
+	  end                                                   ;gb_hmo-141+
+;skh_hmo-07028	IF (ODLVBY.EQ.1.OR.ODLVBY.EQ.3) PLINE (1,35) = FILLER     
+	IF (ODLVBY.EQ.1.OR.ODLVBY.EQ.3 .or. odlvby .eq. 8) PLINE (1,35) = FILLER     ;skh_hmo-07028
+	CALL PRINT    
+
+
+      ;  IF (ODLVBY.EQ.5) BEGIN        	;CHANGE CARRIER FOR MEDICARE    ;jjf_ops07011 
+      ;  	IF (BCKCOD.AND.CNGCAR) ODLVBY = 4     			;jjf_ops07011
+      ;  	END 							;jjf_ops07011
+
+	IF (ODLVBY.EQ.5)  ;If Postal					;jjf_ops07011
+	  BEGIN        	  ;if Line '40' C.O.D.Order, and MEDICARE Ins. - ship UPS! ;jjf_ops07011
+	    IF (BCKCOD.AND.CNGCAR) 					;jjf_ops07011
+	      begin
+		call lbl_set_odlvby ;ks_falconODLVBY = 4   ; Ship UPS
+
+		XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** 40LineCOD chgd to UPS: '+strDispCustOrdNo,wd_updt)
+		decNewCarrier_Flg = 1
+
+		strMSG = 'C.O.D. Medicare Postal **'
+		CALL P815_Write_ODLVBY_Report     ;jjf_ops07011
+	      end  
+	  END     
+	;ms_ontrac+
+	if (odlvby .eq. 9) .and. (decSigReqflag)
+	  begin
+	    ;kd_falcon odlvby = 4
+	    call lbl_set_odlvby ;kd_falcon
+	    decNewCarrier_Flg = 1
+	  end
+	;ms_ontrac-
+;---	Start of skh_hmo-07028
+;
+;---	If it is a Competitive Bid order and the original delivery method is '3' Driver
+;---	leave the order as is. But if it is in-store '1' or '2' then change it to 
+;---	'3' driver delivery
+;
+	if (decCBFlagSet) begin
+	    using strCBOldDelvry select
+('1','2'),	      begin
+		strCBNewDelvry = 3
+		ordhdr.odlvby = 3
+		call process_cb_data
+              end
+(),	      nop
+            endusing
+	end
+	clear CB_Report_array,decCBAryCount,strCBNewDelvry,strCBNewRush
+;
+;---	End of skh_hmo-07028
+;
+;ms_tsp-09002
+;anything originally shipping FedEx express, then backordered, goes back to UPS ground
+	;if  (ordhdr.odlvby .eq. 6) .and.	;if the packages is shipping FedEx
+	;&   (ordhdr.orush .ge. 2) .and.		;with an Air shipment
+	;&   nxtday .eq. 0			;and it's on backorder		
+	;  begin   ;then set the Carrier to UPS, this will flip to ground service
+	;    ordhdr.odlvby = 4  
+	;    clear orush
+	;    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** FedEx change to UPS: '+strDispCustOrdNo,wd_updt)
+	;    decNewCarrier_Flg = 1
+        ;    strMSG = 'FEDEX CHANGED **'
+	;    CALL P815_Write_ODLVBY_Report
+    	;  end
+	;ms_ontrac+
+
+;ms_tsp-09002
+	IF (ODLVBY.EQ.1) PLINE (1,20) = 'CUSTOMER SVC REP   '     
+	IF (ODLVBY.EQ.3) PLINE (1,20) = 'DELIVERY TECHNICIAN'     
+	IF (ODLVBY.EQ.4) PLINE (1,20) = 'DELIVERY = UPS'     
+	IF (ODLVBY.EQ.4.AND.ALZIP(1,5).EQ.44104) PLINE (1,20) = 'DELIVERY = UPS ONLY!'     
+	IF (ODLVBY.EQ.4.AND.ALZIP(1,5).EQ.45504) PLINE (1,20) = 'DELIVERY = UPS ONLY!'     
+	IF (ODLVBY.EQ.5) BEGIN     
+		PLINE (1,20) = 'DELIVERY = US POSTAL'     
+		;  	UNIVERSAL BOLD CONDENSED ITALIC     
+		display (14,ESC + '(10U' + ESC + '(s1p8.5v5s3b4148T')     
+		;  	BEGIN UNDERLINE     
+		display (14,ESC + '&d3D')     
+		END     
+	IF (ODLVBY.EQ.5) PLINE (1,20) = 'DELIVERY = US POSTAL'     
+	IF (ODLVBY.EQ.5) begin     
+		crtflg = 0     
+		if ((instp1.ge.5001.and.instp1.le.5004).or.(instp1.ge.5011.and.instp1.le.5014)) crtflg = 1		     
+		if ((instp2.ge.5001.and.instp2.le.5004).or.(instp2.ge.5011.and.instp2.le.5014)) crtflg = 1		     
+		if ((instp3.ge.5001.and.instp3.le.5004).or.(instp3.ge.5011.and.instp3.le.5014)) crtflg = 1		     
+		if ((instp4.ge.5001.and.instp4.le.5004).or.(instp4.ge.5011.and.instp4.le.5014)) crtflg = 1		     
+		if ((instp5.ge.5001.and.instp5.le.5004).or.(instp5.ge.5011.and.instp5.le.5014)) crtflg = 1		     
+		if ((instp6.ge.5001.and.instp6.le.5004).or.(instp6.ge.5011.and.instp6.le.5014)) crtflg = 1 
+;PP8_DFCT0029770+
+                using alstat select
+		('AA','AE','AP'),  crtflg = 1
+		endusing
+;PP8_DFCT0029770-
+		if (crtflg.ne.0) PLINE(24,65) = 'CERTIFIED-SEE BILLING-USE BROWN BOX ONLY!!'     
+		end     
+	IF (ODLVBY.EQ.6) PLINE (1,20) = 'DELIVERY = Fedex'
+	
+	if (ordhdr.odlvby .eq. 7) pline (1,20) = 'DELV: 1st CLASS MAIL'                     ;gb_hmo-141
+
+	if (ordhdr.odlvby .eq. 8) pline (1,20) = 'DELIVERY = WORLDSHIP'		;skh_hmo-07028
+	if (ordhdr.odlvby .eq. 9) pline (1,20) = 'DELIVERY = ONTRAC   '	;ms_ontrac
+;se2_SmrtPst_RCO+
+	if (ordhdr.odlvby .eq. 11) pline (1,20) = 'DELIVERY = DICOM     '
+	if (ordhdr.odlvby .eq. 12) pline (1,20) = 'DELIVERY = LSO       '
+	if (ordhdr.odlvby .eq. 13) pline (1,20) = 'DELIVERY = P.DISPATCH'
+	if (ordhdr.odlvby .eq. 14) pline (1,20) = 'DELIVERY = UDS       '
+;CBE_SurePst_LS++	
+	;if (ordhdr.odlvby .eq. 15) pline (1,20) = 'DELIVERY = SMARTPOST '
+	if (ordhdr.odlvby .eq. 15) pline (1,20) = 'DELIVERY = SUREPOST '
+	if (ordhdr.odlvby .eq. 16) pline (1,20) = 'DELIVERY = LASERSHIP'
+;CBE_SurePst_LS--	
+;se2_SmrtPst_RCO-
+	IF (ORUSH.AND.NXTDAY.EQ.0) ORUSH = 1	;IF BACKORDER - DO NOT RUSH DELIVER     
+						;ANYMORE IF PARTIAL SHIPPMENT - 05/01/98 - PER GAR - JBL     
+							     
+	if (flg$MedRecall .and. ordhdr.odlvby.eq.4) ordhdr.orush = 3			;2nd day for Medtronics recall B/O
+	if (flg$MedRecall .and. ordhdr.odlvby.eq.6) ordhdr.orush = 3	;kd_falcon
+
+	IF (ORUSH .and. ordhdr.odlvby .ne. 7) PLINE (21,21) = '-'                           ;gb_hmo-141
+	IF (ORUSH .and. ordhdr.odlvby .ne. 7) PLINE (22,29) = RUSH(ORUSH)                   ;gb_hmo-141
+	CALL PRINT     
+	IF (ODLVBY.EQ.5) BEGIN     
+		;  	LINE PRINTER 16 PRINT     
+		display (14,ESC + '(10U' + ESC + '(s0p16.67h8.5v0s0b0T')     
+		;  	END UNDERLINE     
+		display (14,ESC + '&d@')     
+		END     
+	CALL PRINT     
+	CALL PRINT     
+	CALL PRINT     
+	JLDAT = 1     
+	XCALL JLDAT(JLDAT,SWTDAT)     
+	XCALL TIME (TIM)     
+	PLINE (115,117) = 'XXX'     
+	PLINE (118,118) = '-'     
+	PLINE (119,121) = JLDAT,'XXX'     
+	PLINE (122,129) = TIM,'XX:XX:XX'     
+	CALL PRINT     
+END_PASS_1,     
+	PASS = 2     
+;	IF (SHPLOC .ne. 1) GOTO SKPBCD     
+       	GOTO SKPBCD     
+	FORMS (14,(44-DUPCNT))     
+	FOR I FROM 1 THRU DUPCNT     
+		BEGIN     
+		PLINE = DUPLNS(I)     
+		IF (PLINE(132,132).EQ.'~' .OR. PLINE(132,132).EQ.'@') BEGIN     
+			IF (PLINE(132,132) .EQ. '@') SHPCMT = 1     
+			PLINE(132,132) =     
+			CALL GETSIZ     
+			SPCPRT = 1     
+			END     
+		IF (I .EQ. DUPCNT-2) PLINE (22,61) = AUDLIN(1)     
+    		IF (I .EQ. DUPCNT-2) PLINE (111,130) = '(P_____V_____P_____)'     
+      		IF (I .EQ. DUPCNT-1) PLINE (22,61) = AUDLIN(2)     
+		IF (SPCPRT) BEGIN     
+			display (14,ESC + '(10U' + ESC + '(s1p8.5v5s3b4148T')     
+;			XCALL W_DISP (G_WNDID,27,'(10U',27,'(s1p8.5v5s3b4148T')     
+;	  	BEGIN UNDERLINE     
+			IF (SHPCMT) XCALL W_DISP (G_WNDID,27,'&d3D')     
+			END     
+		CALL PRINT     
+		LINSIZ = 132     
+		IF (SPCPRT) BEGIN     
+			display (14,ESC + '(10U' + ESC + '(s0p16.67h8.5v0s0b0T')     
+;			XCALL W_DISP (G_WNDID,27,'(10U',27,'(s0p16.67h8.5v0s0b0T')     
+;  		END UNDERLINE     
+			IF (SHPCMT) display (14,ESC + '&d@')     
+			END     
+		SPCPRT =     
+		SHPCMT =     
+		END     
+;;---------------------------------------------------------     
+;; - INSTALLED TO PRINT BAR-CODE LABELS AT BOTTOM OF TICKET     
+;;---------------------------------------------------------     
+	FORMS (14,(45-DUPCNT))     
+	PLINE (1,25) = NAME     
+	PLINE (47,71) = NAME     
+	PLINE (95,119) = NAME     
+	CALL PRINT     
+	PLINE (1,25) = ALADD1     
+	PLINE (47,71) = ALADD1     
+	PLINE (95,119) = ALADD1     
+	IF (ALADD2.EQ.'          ' .AND. ALCARE.NE.'          ') BEGIN     
+		PLINE (1,25) = ALCARE     
+		PLINE (47,71) = ALCARE     
+		PLINE (95,119) = ALCARE     
+		END     
+	CALL PRINT     
+	PLINE (1,25) = ALADD2     
+	PLINE (47,71) = ALADD2     
+	PLINE (95,119) = ALADD2     
+	IF (ALADD2.EQ.'          ' .AND. ALCARE.NE.'          ') BEGIN     
+		PLINE (1,25) = ALADD1     
+		PLINE (47,71) = ALADD1     
+		PLINE (95,119) = ALADD1     
+		END     
+	CALL PRINT     
+	PLINE (1,15) = ALCITY     
+	PLINE (19,20) = ALSTAT     
+	PLINE (23,27) = ALZIP(1,5)     
+	IF (ALZIP(6,9) .NE.0) PLINE (28,28) = '-'     
+	IF (ALZIP(6,9) .NE.0) PLINE (29,32) = ALZIP(6,9)     
+	PLINE (47,78) = PLINE (1,32)     
+	PLINE (95,126) = PLINE (1,32)     
+	CALL PRINT     
+	CALL PRINT     
+	CALL PRINT     
+			;SET TO BAR-CODE 3 OF 9     
+	display (14,ESC + '(0Y' + ESC + '(s0p8.11h12.0v0s0b0T')     
+	PLINE (1,1) = '*'     
+	PLINE (2,2) = 'E'     
+	PLINE (3,9) = ORDERN,'XXXXXXX'     
+	PLINE (10,20) = CUSNO     
+	STPFLG =     
+	FOR I FROM 11 THRU 21     
+		BEGIN     
+		IF (PLINE (I,I).EQ.' '.AND. STPFLG.EQ.0) PLINE (I,I) = '*'     
+		IF (PLINE (I,I).EQ.'*') STPFLG = 1     
+		END     
+	PLINE (23,44) = PLINE (1,21)     
+	PLINE (46,68) = PLINE (1,21)     
+	CALL PRINT     
+	PLINE (1,1) = '*'     
+	PLINE (2,2) = 'E'     
+	PLINE (3,9) = ORDERN,'XXXXXXX'     
+	PLINE (10,20) = CUSNO     
+	STPFLG =     
+	FOR I FROM 11 THRU 21     
+		BEGIN     
+		IF (PLINE (I,I).EQ.' '.AND. STPFLG.EQ.0) PLINE (I,I) = '*'     
+		IF (PLINE (I,I).EQ.'*') STPFLG = 1     
+		END     
+	PLINE (23,44) = PLINE (1,21)     
+	PLINE (46,68) = PLINE (1,21)     
+	CALL PRINT     
+SKPBCD,     
+	SUBTOT =     
+	SLSTAX =     
+;     	XCALL RDYPR ('CLOSE')     
+	close 14
+;	IF (OUT(1,1) .EQ. '@') BEGIN     
+	PRTFIL =     
+	I2 =     
+	FOR I FROM 1 THRU 40     
+		BEGIN     
+			IF (SAVOUT(I,I).NE.' ') INCR I2     
+			IF (SAVOUT(I,I).NE.' ') PRTFIL(I2,I2) = SAVOUT(I,I)     
+			END     
+      
+	PRTQUE = 'LSR2'     
+;		IF (SELPRT .EQ. 'DRIVRS') PRTQUE = 'DRIVRS'     
+;		IF (SELPRT .EQ. 'MERIDIA') PRTQUE = 'MERIDIA'   
+
+	CALL PUTHLD     ;update ORDSTS record here!
+
+;		XCALL VMCMD (PRTCMD,VMST,VMLOG)  
+;		LPQUE (%ATRIM(PRTFIL),LPNUM:%ATRIM(PRTQUE),COPIES:1)
+;	        xcall LPQUE (PRTFIL,PRTQUE,1)
+;		IF (VMST .EQ. 1) XCALL MESAG('FILE NOT QUEUED!!',1)     
+	incr tckcnt
+;		END     
+      
+WRTHDR,         	;MUST UPDATE BECAUSE ORUSH MAY HAVE CHANGED     
+	IF (LSTTYP.NE.'S') GOTO NOPRT	;DO NOT DO IF CONSIGNMENT    
+;kd_falcon+
+	if shploc .ne. ordhdr.OSHPLC
+	  begin
+	    using odlvby select
+	    (4),
+	      begin
+		if decDefaultCarrier(shploc) .ne. 4
+		  begin
+		    odlvby = 6
+		    DecNewCarrier_flg = 1
+		    if opayby .eq. 2 ordhdr.strrdi = 'C'
+		  end
+	      end
+	    (6),
+	      begin
+		if decDefaultCarrier(shploc) .eq. 4
+		  begin
+		    odlvby = 4
+		    DecNewCarrier_flg = 1
+		  end
+	      end
+	    (), nop
+	    endusing
+	  end
+;kd_falcon-
+        call CheckSmrtpstOrRegCarr 	;se2_SmartPst_RCO
+;se2_SmrtPst_RCO_fix+
+	if (odlvby .ne. ordhdr.decdefaultdlvby)
+	   begin 
+	      decNewCarrier_Flg = 1
+	   end
+;se2_SmrtPst_RCO_fix-
+	if decNewCarrier_Flg 			;jjf_OPS07011
+	  begin
+	    CALL Get_ServiceInfo_ShipVia          ;jjf_OPS07011
+	    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** GetNEW Carrier: '+strDispCustOrdNo,wd_updt)
+          end
+
+	BOXCNT = 1     
+	ordhdr.OSHPLC = SHPLOC		   	     ;LM3_INC1140427
+    
+	WRITE (2,ORDHDR) 	[40=wrthdr]  
+;
+;---	Start of skh_hmo-07028
+;
+;	if decNewCarrier_FLG                     	;jjf_ops07011
+;	  begin						;jjf_ops07011
+;	    CALL P820_Write_ORDHDR_Report       ;jjf_OPS07011
+;	  END						;jjf_ops07011
+;
+	if decNewCarrier_FLG begin                    	;jjf_ops07011
+	    if ((.not. decCBFlagSet) .or. (decCBFlagSet .and. ordhdr.odlvby .gt. 3)) 
+	      begin						;jjf_ops07011
+		CALL P820_Write_ORDHDR_Report       		;jjf_OPS07011
+	      END						;jjf_ops07011
+	end
+;
+;---	End of skh_hmo-07028
+;
+	clear decNewCarrier_Flg			;jjf_ops07011
+
+	GOTO NOPRT     
+	IF (OPAYBY.EQ.2 .AND. OCHKNO.NE.'        ') GOTO NOPRT 
+
+;;jbl - do not print c.o.d. tickets on backorders
+;	IF ((OAMTPD+ODAMT.NE.0) .AND. OPAYBY.EQ.2) BEGIN
+;		SAVLTA = AVPR(6)     
+;		if (odlvby.eq.5) begin     
+;			AVPR(6) = 'MAICOD'     
+;			IF (CURLOC.EQ.2) AVPR(6) = 'MAIWST'     
+;			XCALL PUTCM(COMMON)     
+;			end     
+;		XCALL RDYPR ('CUSOR1',6,0)     
+;		CLOC = SHPLOC     
+;		CODAMT = OAMTPD + ODAMT     
+;		IF (ODLVBY.EQ.4) XCALL UPSCOD ('CUSOR1',CUSMAS,CUSMA2,ADDRES,ORDERN,     
+;&		              PROPEN,CODAMT,ODLVBY)     
+;		IF (ODLVBY.EQ.5) XCALL MAICOD ('CUSOR1',CUSMAS,CUSMA2,ADDRES,ORDERN,     
+;&				PROPEN,CODAMT)     
+;		XCALL RDYPR ('CLOSE')     
+;		AVPR(6) = SAVLTA     
+;		XCALL PUTCM(COMMON)     
+;		END     
+NOPRT,     
+	RETURN     
+      
+      
+;se2_SmrtPSt_RCO+
+;-------------------------------------------------------------------------------
+; Check if new regional carrier service is applicable
+;-------------------------------------------------------------------------------
+CheckSmrtpstOrRegCarr,
+	ORDHDR.DECDEFAULTDLVBY         	= odlvby
+;se2_SmrtPst_RCO_fix+
+	if (odlvby .eq. 9)
+	   begin
+	      flg$OntracElig = 1
+	   end
+;se2_SmrtPst_RCO_fix-
+	INSRN2KEY.strKeyCompany 	= cusmas.compy
+	INSRN2KEY.strKeyInsuranceNum 	= instp1
+	read (50, insrn2, insrn2key)	[err = lblcontinue]
+lblcontinue,
+	if (insrn2.IPDELVBY .gt. 0) .or. (cusmas.decpreferredcarrier .gt. 0)
+	   begin
+    	      goto CheckSmrtpstOrRegCarr_exit
+	   end
+
+        call lblSmartpostEligChk
+	call lblRegCarrEligChk
+        if  (flg$SmartPstChk .or. flg$RegCarrChk)	
+	   begin
+	      str_zip_in = ALZIP,'XXXXXXXXXX' 
+              xcall checkSmrtpstOrRegCarr(wtznchn,zptchn,DefaultCarrierWH,WRK_SHPLOC,
+ 	    &				 str_zip_in,decTotalWeight,cusmas.compy,flg$SmartPstChk,flg$RegCarrChk,odlvby,
+ 	    &                            flg$OntracElig,flg$SmrtPstElig,flg$RegCArrElig,CUSMAS,ch$flsdsc,ch$ordlin,ordhdr.ocusno,ordhdr.ordern,ordhdr,ch$invmas);CBE_SurePst_LS	
+
+	      using odlvby select
+		;(9,11 thru 15), 	ordhdr.orush  = 1	;CBE_SurePst_LS
+	        (9,11 thru 16), 	ordhdr.orush  = 1		;CBE_SurePst_LS
+	      endusing
+
+	   end
+        
+CheckSmrtpstOrRegCarr_exit,
+	return
+
+lblSmartpostEligChk,
+;-------------------------------------------------------------------------------
+; Exceptions for Smartpost eligibility
+;-------------------------------------------------------------------------------
+         flg$SmartPstChk = 1
+;CBE_SurePst_LS++
+;    	 if (cusma2.strNursesCare .eqs. 'Y')
+;	  begin
+;	    clear  flg$SmartPstChk
+;	    goto lblSmartpostEligChk_exit
+;	  end
+;CBE_SurePst_LS--
+	 if (insrn2.strSmartPost .eqs. 'Y')
+	   begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 if (cusmas.strSmartPost .eqs. 'Y')
+	    begin
+	      clear  flg$SmartPstChk
+	      goto lblSmartpostEligChk_exit
+	    end
+
+	 if ((addres.strRDI .eqs. 'N') .or. (addres.strRDI .eqs. 'C'))
+           begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 ;APO/FPO Military address check
+	 if (alstat .eqs. 'AA' .or. alstat .eqs. 'AE' .or. alstat .eqs. 'AP')
+	   begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 if (strHAZ_SEVERITY_FLG .eqs. 'Y') 
+           begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+;CBE_SurePst_LS++
+;	 if (Flg$OffContinentalUSA) 
+;	   begin
+;	     clear  flg$SmartPstChk
+;	     goto lblSmartpostEligChk_exit
+;	   end
+
+;	 if (flg$PdtClsOptOut)     ;Product class opt out for smartpost
+;	   begin
+;	    clear  flg$SmartPstChk
+;	    goto lblSmartpostEligChk_exit
+;	   end
+;CBE_SurePst_LS--
+	 IF (OPAYBY .eq. 2)
+           begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 IF (bckcod)
+           begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 ;if (decTotalWeight .gt. 1440)		;;CBE_SurePst_LS
+	 if (decTotalWeight .gt. 1360)		;CBE_SurePst_LS
+	   begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+
+	 if (orush .gt. 1)
+	   begin
+	     clear  flg$SmartPstChk
+	     goto lblSmartpostEligChk_exit
+	   end
+;CBE_SurePst_LS++	 
+	  if flg$OntracElig 
+	  begin
+	    clear flg$SmartPstChk
+	    goto lblSmartpostEligChk_exit
+	  end
+	
+	if(flgDropShip)
+	  begin
+	    clear flg$SmartPstChk
+	    goto lblSmartpostEligChk_exit
+	  end
+	
+	if .not. DefaultCarrierWH.flg$SmartpostOn
+	  begin
+            clear flg$SmartPstChk
+            goto lblSmartpostEligChk_exit
+          end
+;CBE_SurePst_LS--	
+	using alstat select
+	;("CD","PR","VI","GU","AA","AE","AP","AS","MP","FM","MH","PW"),  	;CBE_SurePst_LS
+	 ('AK','HI','PR','VI','GU','AA','AP','AE','AS','MP','FM','MH','PW'),   	;CBE_SurePst_LS
+	    begin
+	    clear flg$SmartPstChk
+	    goto lblSmartpostEligChk_exit
+	  end
+        endusing
+
+
+lblSmartpostEligChk_exit,
+	 return
+
+lblRegCarrEligChk,
+;-------------------------------------------------------------------------------
+; Exceptions for Regional Carrier eligibility
+;-------------------------------------------------------------------------------
+         flg$RegCarrChk = 1
+
+	 if ((addres.strRDI .eqs. 'N') .or. (addres.strRDI .eqs. 'C'))
+           begin
+	     clear  flg$RegCarrChk
+	     goto lblRegCarrEligChk_exit
+	   end
+
+	 if (flg$POBOx)
+	   begin
+	     clear  flg$RegCarrChk
+	     goto lblRegCarrEligChk_exit
+	   end
+
+ 	 IF (OPAYBY .eq. 2)
+           begin
+	     clear  flg$RegCarrChk
+	     goto lblRegCarrEligChk_exit
+	   end
+
+	 IF (bckcod)
+           begin
+	     clear  flg$RegCarrChk
+	     goto lblRegCarrEligChk_exit
+	   end
+
+	 if (orush .gt. 1)
+	   begin
+	     clear  flg$RegCarrChk
+	     goto lblRegCarrEligChk_exit
+	   end
+;CBE_SurePst_LS++	 
+	 if(flgDropShip)
+	  begin
+	    clear flg$RegCarrChk
+	    goto lblRegCarrEligChk_exit
+	  end
+	
+;CBE_SurePst_LS--
+lblRegCarrEligChk_exit,
+	 return
+
+;se2_smrtpst_RCO-
+CONTIN,     
+	CALL PRINT2     
+	PLINE (31,82) = '(------PLEASE SEE NEXT PAGE FOR REST OF ORDER------)'     
+	CALL PRINT2     
+	FORMS (14,(42-DUPCNT))     
+	FOR I FROM 1 THRU DUPCNT     
+		BEGIN     
+		PLINE = DUPLNS(I)     
+		IF (PLINE(132,132).EQ.'~' .OR. PLINE(132,132).EQ.'@') BEGIN     
+			IF (PLINE(132,132) .EQ. '@') SHPCMT = 1     
+			PLINE(132,132) =     
+			CALL GETSIZ     
+			SPCPRT = 1     
+			END     
+		CALL PRINT2     
+		LINSIZ = 132     
+		END     
+	CALL PRINT2     
+	PLINE (31,82) = '(------PLEASE SEE NEXT PAGE FOR REST OF ORDER------)'     
+	CALL PRINT2     
+;	IF (COMPY .NE. 1) FORMS (14,0)     
+	FORMS (14,0)     
+	DUPCNT =     
+	TOPHLF =     
+	HLDORD = TORDN     
+	TORDN = ORDER     
+	CALL TOPFRM     
+	TORDN = HLDORD     
+	LCOUNT =     
+;	NEWPAG = 1     
+;	CALL LINE1     
+;	LCOUNT =     
+	RETURN     
+;-------------------------------------------------------------------------      
+PRTHDR,     
+	CALL PRINT     
+	PLINE (1,3) = 'QTY'     
+	PLINE (6,9) = '|QTY'     
+	PLINE (12,14) = '   '     
+	CALL PRINT     
+LINE21,     
+	PLINE (1,3) = 'ORD'     
+	PLINE (6,9) = '|SHP'     
+	PLINE (14,18) = 'BIN #'     
+	PLINE (27,32) = 'ITEM #'     
+	PLINE (46,70) = '              DESCRIPTION'     
+	PLINE (96,102) = 'SOLD BY'     
+	PLINE (115,129) = 'UNIT|  AMOUNT|C'     
+	CALL PRINT     
+	RETURN     
+      
+PRTPO,     
+	PO = 1     
+	LSTTYP = TTYPE     
+;mew_wo135196	XCALL PORECV (TORDN,12,11,0,INVCHN,IINVCHN,WHRFRM,LOCCHN,edichn)	;jbl1     
+	GOTO GETCUS     
+PRINT,     
+	LINCNT =     
+	IF (PASS.EQ.1) INCR DUPCNT     
+	if (dupcnt .gt. 50) dupcnt = 50
+	IF (PASS.EQ.1) DUPLNS(DUPCNT) = PLINE     
+	XCALL PRINT (LINCNT,PGCNT,PLINE,'NO TITLE','NO HDR',' ',' ',     
+&		 	'NO LEGND',' ',' ',0,LINSIZ,LINSIZ,0)     
+	IF (PASS.EQ.1.AND.DUPCNT.GE.38) CALL CONTIN     
+	PLINE =     
+	RETURN     
+PRINT2,     
+	LINCNT =     
+	XCALL PRINT (LINCNT,PGCNT,PLINE,'NO TITLE','NO HDR',' ',' ',     
+&		 	'NO LEGND',' ',' ',0,LINSIZ,LINSIZ,0)     
+	RETURN     
+      
+DONE,     
+	UNLOCK 1     
+	UNLOCK 2     
+	UNLOCK 3     
+	UNLOCK 4     
+	UNLOCK 6     
+	UNLOCK 7     
+;	UNLOCK 9     
+	UNLOCK 10     
+	UNLOCK 11     
+	UNLOCK 12     
+	UNLOCK 13     
+	UNLOCK 16     
+;     	XCALL RDYPR ('CLOSE')     
+;SCJ1	XCALL W_DISP (G_WNDID,WD_POS,3,1,WD_CLR,WDC_EOW)     
+;SCJ1	XCALL W_DISP (G_WNDID,WD_POS,12,20,WD_ATTR,ATTR_SET+ATTR_BLNK+ATTR_RVRS,'ARE ALL TICKETS OK?')     
+;SCJ1   XCALL W_DISP (G_WNDID,WD_ATTR,ATTR_CLR+ATTR_ALL)     
+;SCJ1	XCALL INPUT (12,40,01,01,'YN',ENTRY,INXCTL,1)     
+;SCJ1      	IF (ENTRY .EQ. 'Y') GOTO CLOSE     
+;	goto close     
+;      
+;	CNT =     
+;	LSTCUS = 'ZZZZZZZZZZZ'     
+;	LSTORD =     
+;	LSTTYP =     
+;	RNTLIN =     
+;	ORDLIN =     
+;	ORDHDR =     
+;	CUSMAS =     
+;	ENTERL =     
+;	tckcnt =     
+;	PRTHDR = 1     
+;	REPRINT = 1     
+;GETNUM,     
+;	XCALL W_DISP (G_WNDID,WD_POS,12,20,WD_CLR,WDC_EOL,'BEGINNING SEQUENCE #')     
+;	XCALL W_DISP (G_WNDID,WD_POS,14,20,'ENDING SEQUENCE #')     
+;	XCALL INPUT (12,45,05,01,'# ',ENTRY,INXCTL,1)     
+;       	BEGSEQ = ENTRY     
+;	IF (BEGSEQ .EQ. 0) GOTO GETNUM     
+;	CNT = BEGSEQ     
+;	XCALL INPUT (14,45,05,01,'# ',ENTRY,INXCTL,1)     
+;	ENDSEQ = ENTRY     
+;	IF (ENDSEQ .LT. BEGSEQ) GOTO GETNUM     
+;	XCALL RDYPR ('INV:BCKORD',4,0) 	;SET TO PRINT ON QUEUE #4     
+;	GOTO REDTMP     
+      
+CLOSE,	     
+	CALL P910_NORMAL_END
+	CLOSE ch$AuditRpt		;jjf_ops07011
+;
+;---	Start of skh_hmo-07028
+;
+	close ch$CBReport
+	if (decCBFlagSet) call email_cb
+;
+;---End of skh_hmo-07028
+;
+	xcall getcm(common)     
+	UICPJ = SAVPJ     
+	xcall putcm(common)     
+	XCALL W_DISP (G_WNDID,WD_POS,2,1,WD_CLR,WDC_EOL,'UPDATING ORDLIN & RNTLIN & PURLIN')
+	xcall waitmsg (4,1)     
+	xcall w_updt
+	XCALL BEGFL (1)
+	IF (RENTAL) XCALL BEGFL (3)	;IF RENTAL .NE. 1 DON'T BOTHER UPDATING     
+	IF (PO) XCALL BEGFL (12)	;IF PO .NE. 1 DON'T BOTHER UPDATING     
+UPDLIN,          
+	READS (1,ORDLIN,UPDRNT)  	[1=updrnt,40=updlin]	;mew2   
+   
+	IF (LBOPRT .NE. 'P') GOTO UPDLIN  
+	XCALL W_DISP (G_WNDID,WD_POS,10,1,WD_CLR,WDC_EOL,'Processing Updating....'+lcusno+"/"+%string(lordn,'XXXXXXX'),wd_updt) ;etd5
+   
+	LBOPRT = 'Y'     
+UPWRTL,          
+	if (%trimz(ordlin.strOrderLineId).eq.0)				;OI-1568
+	    xcall getNextOrdlinId(1, , ordlin.strOrderLineId)		;OI-1568
+	WRITE (1,ORDLIN)		[40=upwrtl]     
+    
+	GOTO UPDLIN     
+UPDRNT,     
+	IF (RENTAL .EQ. 0) GOTO UPDPO	;NO RENTALS TO PROCESS     
+REDER1,        
+       	READS (3,RNTLIN,UPDPO)		[1=updpo,40=reder1]	;mew2     
+   
+	IF (RLITM.EQ.'~' .OR. RLITM.EQ.'{}') GOTO REDER1     
+	IF (RBOPRT .NE. 'P') GOTO REDER1     
+	RBOPRT = 'Y'     
+UPWRTR,         
+	WRITE (3,RNTLIN)	[40=upwrtr]			;mew2     
+   
+	GOTO REDER1     
+UPDPO,     
+	IF (PO.EQ.0) GOTO ENDIT		;NO P.O.'S TO PROCESS     
+
+	READS (12,PURLIN,endit)		[1=endit,40=updpo] ;mew2;KMS1     
+
+	IF (PLBOPR.NE.'Y') GOTO UPDPO     
+	IF (POXFLG.EQ.'Y') GOTO UPDPO     
+	PLBOPR =     
+UPWRTP,         
+	WRITE (12,PURLIN)		[40=upwrtp]     
+     
+	GOTO UPDPO 
+;close files here!
+ENDIT, 
+	unlock 21			;mew2
+
+	
+	XCALL FILES (1,'U',45,2)	;ORDLIN     
+	XCALL FILES (2,'U',44,2)	;ORDHDR     
+	XCALL FILES (3,'U',54,2)	;RNTLIN     
+	XCALL FILES (4,'I',01,2)	;CUSMAS     
+	XCALL FILES (6,'I',152,2)	;ENTERL     
+	XCALL FILES (7,'I',08,2)	;TMPIDX   
+
+	XCALL FILES (7,FILNAM,08,4)     
+;        XCALL DELET (FILNAM)        	;DELETE WORK FILE HERE !!  - TESTING - PROD !!
+
+	;jsw1 XCALL FILES (9,'I',153,2)	;CUSINS     
+	XCALL FILES (10,'I',77,2)	;LOCMAS     
+	XCALL FILES (11,'I',11,2)	;VENMAS     
+	XCALL FILES (12,'U',48,2)	;PURLIN     
+	XCALL FILES (13,'I',154,2)	;ADDRES     
+	xcall files (edichn,'I',268,2)	;ediuom		;jbl1  
+
+
+	XCALL FILES (ch$servic,'I',463,2)   ;eps service file     ;jjf_ops07011
+	XCALL FILES (ch$carrir,'I',462,2)   ;eps carrier file     ;jjf_ops07011
+        xcall files (ch$carser,'I',464,2)   ;eps valid carrier/service file ;jjf_ops07011
+	xcall files (ch$flsdsc,'I',97,2)		;CBE_SurePst_LS
+;	XCALL CTLST (08,08,'INV:BCKORD',0)	;CH = INV:RLSORD     
+;	STOP 'SYS$SYSTEM:DBLSORT'     
+	XCALL FILES (1,'U',200,11,2)		;param  
+
+
+	xcall files (vndcod_chn,'I',173,2)	;mew1
+	XCALL FILES (ch$PhrmRvw,'I',652,2)		;Close Pharm Review file - LM3_INC1140427
+redctl_i,     
+	read (1,ivctrl,4)		;KMS1
+
+	bckpro = 'N'     
+wrtctl,     
+	write (1,ivctrl,4)		;KMS1     
+	xcall files (1,'U',200,12)     
+
+;**************************************************************************
+;job logging
+	using flg$TestEnv select	   	;lim_mis-118.19
+	 (1), nop                          	;lim_mis-118.19
+	 (),  begin                        	;lim_mis-118.19
+	    recJobMonitor.strJobDesc = "EPBackorders"			    
+	    recJobMonitor.decStatPrev = recJobMonitor.decStatCode				;save previous
+	    recJobMonitor.decStatCode = 5				;5 = Completed
+	    xcall SetJobStatus (recJobMonitor)		;update job monitor
+	    end				   	;lim_mis-118.19
+        endusing  			   	;lim_mis-118.19
+;**************************************************************************
+
+	if (strBatch) STOP
+	if (flg$TestEnv) STOP
+
+	stop 'inv:oemenu'
+
+NOHDR,
+	unlock 2			;mew2	
+	XCALL W_DISP (G_WNDID,WD_POS,23,1,WD_ATTR,ATTR_SET+ATTR_RVRS,     
+&         'NO HEADER FOR SALES- ORDER # ',%string(TORDN,'XXXXXXX'),     
+&         ' CUSTOMER # ',CUSNO)     
+        XCALL W_DISP (G_WNDID,WD_ATTR,ATTR_CLR+ATTR_ALL)    
+
+;etd2	XCALL MESAG (' ',1)     
+; etd2 add error email	
+	xcall delet ('Email:BCKORD_NOHDR_errmail.TXT')
+  	OPEN (241,O:S,'Email:bckord_nohdr_errmail.TXT')
+	writes (241,'EBOMBE')
+	writes (241,' ')
+        actmail = 'THE FOLLOWING ORDER HAS ERRORS:'
+        WRITES (241,ACTMAIL)
+        WRITES (241,'0')
+	writes (241,'ORDER:'+%String(tordn,'XXXXXXXX') +"  CUST:"+ cusno)
+	close 241
+;*** begin lim1
+	strEmailName = 'Email:bckord_nohdr_errmail.TXT'		
+	call send_email
+;*** end lim1
+;etd2 end addition for email
+	GOTO GETCUS	;GO TO NEXT INDEX RECORD
+NOADD1,     
+	decALTADD_Flg =                 ;clear flag
+	ADDRES =     
+	GOTO CHKALT     
+NOOLN, 
+	unlock 1			;mew2
+	XCALL W_DISP (G_WNDID,WD_POS,23,1,WD_ATTR,ATTR_SET+ATTR_RVRS,     
+&         'NO LINE ITEMS SALES- ORDER # ',%string(TORDN,'XXXXXXX'),     
+&         ' CUSTOMER # ',CUSNO)     
+        XCALL W_DISP (G_WNDID,WD_ATTR,ATTR_CLR+ATTR_ALL)     
+;etd2	XCALL MESAG (' ',1)     
+; etd2 add error email	
+	xcall delet ('Email:BCKORD_NOoln_errmail.TXT')
+  	OPEN (241,O:S,'Email:bckord_nooln_errmail.TXT')
+	writes (241,'EBOMBE')
+	writes (241,' ')
+        actmail = 'THE FOLLOWING ORDER HAS NO ORDLIN:'
+        WRITES (241,ACTMAIL)
+        WRITES (241,'0')
+	writes (241,'ORDER:'+%String(tordn,'XXXXXXXX') +"  CUST:"+ cusno)
+	close 241
+;*** begin lim1
+	strEmailName = 'Email:bckord_nooln_errmail.TXT'		
+	call send_email
+;*** end lim1
+;etd2 end addition for email
+
+	GOTO GETCUS	;GO TO NEXT INDEX RECORD     
+;     
+;	STORE ORDSTS IN HOLDING FILE     
+;     
+PUTHLD,     
+	XCALL TIME (TIM)     
+	ORDSTS =     
+	ordsts.SSHPDT(1,4) = HLDDAT(5,8)     
+	ordsts.SSHPDT(5,8) = HLDDAT(1,4)     
+	if (hlddat .eq. 0) ordsts.sshpdt = savdat     
+	ordsts.SPRITY = 45     
+	if (odlvby .eq. 3) ordsts.sprity =     
+;skh_hmo-07028	if (odlvby.eq.1 .or. odlvby.eq.2) ordsts.sprity = 10    
+	if (odlvby.eq.1 .or. odlvby.eq.2 .or. ordhdr.odlvby .eq. 8) ordsts.sprity = 10    ;skh_hmo-07028
+;
+;---	Start of skh_hmo-07028
+;
+;	if decNewCarrier_FLG                     	;jjf_ops07011
+;	  begin						;jjf_ops07011
+;	    CALL CHECK_CAN_SHIP_FEDEX              	;jjf_ops07011
+;	  END						;jjf_ops07011
+;
+	if decNewCarrier_FLG begin                    	;jjf_ops07011
+	    if ((.not. decCBFlagSet) .or. (decCBFlagSet .and. ordhdr.odlvby .gt. 3)) 
+	      begin						;jjf_ops07011
+		CALL CHECK_CAN_SHIP_FEDEX              	;jjf_ops07011
+	      END						;jjf_ops07011
+	end
+;
+;---	End of skh_hmo-07028
+;
+	if (odlvby.eq.4 .and. (orush.ge.2 .and. orush.le.4)) ordsts.sprity = 15     
+	if (odlvby.eq.6 .and. (orush.ge.2 .and. orush.le.4)) ordsts.sprity = 15     
+
+	if (ordhdr.strNewOrderFlag .eq. 'Y') ordsts.flgNewOrder = 1			;guy_New
+
+	ordsts.SINGLE =
+;	IF (ONEITM .EQ. 1) SINGLE = 1     
+;	SMATRX = MATRX     
+	ordsts.SMATRX =     
+	ordsts.SORDNO  = SAVORD     
+	ordsts.STIME = TIM     
+	ordsts.SORDD = TODAY     
+	ordsts.SCUST = CUSNO     
+	ordsts.SLOCAT = SHPLOC     
+	ordsts.SAUDIT =			;NO AUDIT UNLESS M\EDICAID     
+	IF (CAIDCK) ordsts.SAUDIT = 1		;AUDIT LEVEL FOR B/O SET TO 1     
+	ordsts.SLABCT =			;DONT PRINT ANY LABELS FO BACKORDERS     
+	ordsts.SAUTH =     
+	ordsts.SSTATS = 98			;BACKORDER STATUS - UNTIL ITEMS COME IN     
+;	XCALL DECML (NAME(1,1),NUMVAL)     
+;	POINTR = NUMVAL - 64	;LETTERS A-Z = 65-90     
+;	IF (POINTR.GE.1 .AND. POINTR.LE.26) SDEPT = BILINT(POINTR)     
+;     
+;	FOR NOW A-M GOES TO DENISE W. (DMW)     
+;	        N-Z GOES TO NICK V.   (NV )     
+;     
+;	SDEPT = 'NV '     
+;	IF (NAME(1,1) .LE. 'M') SDEPT = 'DMW'     
+;     
+;	IF (SDEPT .EQ. '   ') SDEPT = 'BIL'     
+;	IF (SAUDIT .EQ. 0) SDEPT = 'SHP'	;NO NEED TO LOOK AT - DIRECTLY     
+;						; TO SHIPPING     
+	ordsts.SDEPT = 'B/O'				;BACKORDERS     
+	ordsts.SFORM = WCHFRM     
+	ordsts.SCMPNY = COMPY     
+	ordsts.SREFCD = OREFRL     
+	ordsts.SDLVRY = ODLVBY     
+      
+	ordsts.SPAYBY = OPAYBY     
+	ordsts.SCHKNO = OCHKNO     
+      
+	CLEAR SORKY2     
+	SCUSK = ordsts.SCUST     
+	SORDK = ordsts.SORDNO     
+	READ (22,OSARCV,SORKY2) [1=STRIT,53=STRIT,64=STRIT]     
+	ordsts.MA_NAME  = MANAME     
+	ordsts.MA_DATE	 = MADATE     
+	ordsts.MA_RELTN = MARELTN     
+	ordsts.MA_CNFRM = MACNFRM     
+      
+STRIT,
+	ordsts.serziphot = 0						;djm_pur211
+	if (dec_ishot .eq. 1) ordsts.serziphot = 1      		;djm_pur211
+	STORE (20,ORDSTS)		[40=strit,54=duplct]	;djm_pur211
+;djm_pur211	zipk = alzip	,'XXXXXXXXX'
+;djm_pur211	zipk(6,9) =
+;djm_pur211	read(30,ZIPTNT,zipk)		[1=nozip,53=nozip]  	;kag1
+;djm_pur211zip_cont,
+;djm_pur211	serziphot = 0
+;djm_pur211	locase ZTHOT
+;djm_pur211       	if (ZTHOT.eq.'h') serziphot = 1   	;kag1
+;mew2	ONERROR geter26
+;djm_pur211	STORE (20,ORDSTS)		[40=strit,54=duplct]	;mew2     
+;mew2	OFFERROR     
+;djm_pur211	RETURN     
+;djm_pur211nozip,
+;djm_pur211	testzip = alzip(1,5)	,'XXXXX'
+;djm_pur211	if (testzip .eq. ztcode(1,5)) goto zip_cont
+;djm_pur211	ziptnt =
+;djm_pur211	goto zip_cont
+;
+
+;guy_062007-29
+	return
+
+DUPLCT, 
+	recSaveOrdsts = ordsts
+	call ReadOrdsts
+;guy_FixLoc
+	if (ordsts.sstats .eq. 98) begin
+	    delete (20)
+	    ordsts.SLOCAT = SHPLOC     
+	    goto StrIt
+	    end
+;****************************end guy_FixLoc
+
+;guy_NoReplace
+	clear flg$NoAudits
+	flg$AllAuditsClosed = 1
+	call CheckForOpenAudits
+	if (recAuditParam.flg$NoAudits.eq.0 .and. recAuditParam.flg$AllAuditsClosed.eq.0) return	;have open audits must have been reprinted
+;*****************************end guy_NoReplace
+
+	delete (20)
+OkNow,
+	ordsts = recSaveOrdsts
+	goto strit
+;	RETURN     
+;
+;guy_NoReplace
+CheckForOpenAudits,
+	recAuditParam.decCompany = ordsts.scmpny
+	recAuditParam.strCustomerNumber = ordsts.scust
+	recAuditParam.decOrderNumber = ordsts.sordno
+	clear recAuditParam.strActivity
+	xcall CheckForLastAudit (recAuditParam.ch$cusAud,recAuditParam.decCompany,recAuditParam.strCustomerNumber,
+&			 	recAuditParam.decOrderNumber,recAuditParam.strActivity,recAuditParam.flg$AllAuditsClosed,
+&			 	recAuditParam.flg$NoAudits)
+	return
+;****************************end guy_NoReplace
+
+ReadOrdsts,
+	clear SOrky2
+	SOrky2.SCusk = ordsts.scust
+	SOrky2.SOrdk = ordsts.sordno
+	read (20,ordsts,SOrky2,keynum:2)		[1=OkNow,40=ReadOrdsts,53=OkNow]
+	return
+;*************************************************end guy_062007-29
+      
+NOINV,     
+	INVMA1 =     
+	invma2 = 	;etd1     
+	GOTO IVCONT     
+noinvma2,              ;etd1     
+	invma2 =          ;etd1     
+	goto ivcont        ;etd1     
+      
+GETSIZ,     
+	LINSIZ = 132     
+SIZLOP,     
+	DECR LINSIZ     
+	IF (LINSIZ .GT. 0) BEGIN     
+		IF (PLINE(LINSIZ,LINSIZ) .EQ. ' ') GOTO SIZLOP     
+		END     
+	IF (LINSIZ .LE. 0) LINSIZ = 1     
+	RETURN     
+      
+;etd1 - new routine to get the unit of meas description     
+get_ediuom,     
+        UOMKEY = NEW_SBUY_UOM     
+        READ (EDIchn,EDIUOM,UOMKEY,KEYNUM:0) [1=no_uom_full_desc,40=get_ediuom,53=no_uom_full_desc]     
+        new_inproc8 = edi_uom_desc(1,7)     
+        return     
+no_uom_full_desc,     
+        new_inproc8 =     
+        return     
+
+;---------------------------------------------------------------------
+;---Check Delivery By (ODLVBY) should change due to going back to original
+;--- Ship Location.
+;---Check if Method Delivery has changed (ORUSH) back to Ground 
+;---------------------------------------------------------------------
+Check_Can_Ship_FedEx,			    			;jjf_ops07011
+	clear strFedExCarrierCode
+
+        IF (decBCBSItem) return   ;BCBS Test Kit ship from OHIO - Postal 1st Class
+
+    ;-----------------------------						;jjf_OPTOUT
+    ;Carrier OPT OUT 								;jjf_OPTOUT
+    ;    if PREF Carrier exists, 
+    ;       - ODLVBY (Delivery BY) is Equal PREF Carrier                        ;jjf_OPTOUT
+    ;         then do not change to different Carrier.				;jjf_OPTOUT
+    ;       -  
+    ;-----------------------------                                              ;jjf_OPTOUT
+	if (cusmas.decPreferredCarrier) .and.        
+	&  (opayby .ne. 2) .and.  		;COD must go UPS
+	&  (BCKCOD .eq. 0) .and.         	;COD '40' Line must go UPS
+	&  ((strHAZ_SEVERITY_FLG .eq. 'N') .or.(strHAZ_SEVERITY_FLG .eq. ' '));'Y'=ORMD=can ship UPS pr FedEx Grd.
+	  begin
+	    ODLVBY = cusmas.decPreferredCarrier   ; use PREF Carrier code 
+	    ;kd_falcon+
+	    using odlvby select
+	    (4,6),  call lbl_set_odlvby
+	    (),     nop
+	    endusing
+	    ;kd_falcon-
+	    orush = 1
+	    RETURN
+	  end
+
+    ;-----------------------------                                              ;jjf_OPTOUT
+;       IF (ODLVBY.EQ.4) .or. (ODLVBY.EQ.6) .or. (ODLVBY.EQ.9)	;ms_ontrac			;se2_SmrtPst_RCO
+	if  (odlvby .eq. 4  .or. odlvby .eq. 6  .or. odlvby .eq. 9  .or. odlvby .eq. 11 .or. 	;se2_SmrtPst_RCO
+	&    odlvby .eq. 12 .or. odlvby .eq. 13 .or. odlvby .eq. 14 .or. odlvby .eq. 15)	;se2_SmrtPst_RCO
+	  begin
+	      strHLDZip9 = ALZIP,'XXXXXXXXX'    ;jjf_ops07011	
+ 
+	      XCALL FedEX_Check_ZIP(cusmas.compy,strHLDZip9(1,5),       ;;jjf_ops07011	
+	      &			    SHPLOC,strFedExCarrierCode)  ;;jjf_ops07011	
+
+	      if ((decSigReqflag) .and. (strFedExCarrierCode .eq. 'F'))		;ms_ontrac
+		clear strFedExCarrierCode					;ms_ontrac
+
+	      if (strFedExCarrierCode.eqs.'O' .and. ((instp1.ge.5000.and.instp1.le.5999) .or. (instp2.ge.5000.and.instp2.le.5999) .or. (instp3.ge.5000.and.instp3.le.5999))) clear strFedExCarrierCode	;guy_NoDMERCOnTrac
+
+	      if (strFedExCarrierCode .eq. 'F' .or. strFedExCarrierCode .eq. 'O')         ;Set to FedEx ORDER !!!
+	      &	  .and. (opayby .ne. 2)   		;COD must go UPS
+	      &	  .and. (BCKCOD .eq. 0)          	;COD '40' Line must go UPS
+	      &	  .and. (strHAZ_SEVERITY_FLG .NE. 'H') then ;'Y'=ORMD=can ship UPS pr FedEx Grd. 
+                                                            ;'H'=Hazmat only ship USP
+		  BEGIN
+
+	    	    using strFedExCarrierCode select
+		    ('F'),
+		      begin
+			IF (ODLVBY .ne. 6)		;only change if not FedEx = 6
+			  BEGIN
+			    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** SHIP Fedex: '+strDispCustOrdNo,wd_updt)
+			    call Display_HDR_INFO
+			    ODLVBY  = 6
+			    call lbl_set_odlvby	;kd_falcon  
+		          END
+
+			if (strHAZ_SEVERITY_FLG) .and. (ORUSH .ne. 1)
+			  begin
+			    strOLDLocn = orush,'X'
+			    XCALL W_DISP (G_WNDID,WD_POS,22,1,WD_CLR,WDC_EOL,' ** ORUSH CHGD: '+strOLDLocn,wd_updt)
+			    orush = 1  		;ORMD - Ship Ground only     ;jjf_ops-ORMD
+			    decOverRideRush = 1
+			  end
+		      end
+		    ('O'),
+		      begin
+			flg$OntracElig = 1		;se2_SmrtPst_RCO_fix
+			IF (ODLVBY .ne. 9)		
+			  BEGIN
+			    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** SHIP ONTRAC: '+strDispCustOrdNo,wd_updt)
+			    call Display_HDR_INFO
+			    ODLVBY  = 9
+			    ;flg$OntracElig = 1		;se2_smrtpst_RCO ;se2_SmrtPst_RCO_fix
+		          END
+			if (ORUSH .ne. 1)
+			  begin
+			    strOLDLocn = orush,'X'
+			    XCALL W_DISP (G_WNDID,WD_POS,22,1,WD_CLR,WDC_EOL,' ** ORUSH CHGD: '+strOLDLocn,wd_updt)
+			    orush = 1  		;ORMD - Ship Ground only     ;jjf_ops-ORMD
+			    decOverRideRush = 1
+			  end
+		      end
+		    (),    nop
+		    endusing
+
+	          end
+               else
+		 begin
+		    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** NOT CHGD to Fedex: '+strDispCustOrdNo,wd_updt)
+		    if (BCKCOD)
+		       XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** 40Line COD: '+strDispCustOrdNo,wd_updt)
+                    if (opayby .eq. 2)then
+		       XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** Order is COD: '+strDispCustOrdNo,wd_updt)
+               ;    display strHLDZip(1,5),SHPLOC
+		      else
+		        begin
+			  call Display_HDR_INFO
+		        end
+	          end
+
+	      if (strFedExCarrierCode .ne. 'F')   ;Not FedEx Order
+		 begin   ;Order is NOT FedEx-able
+		   if (ODLVBY.EQ.6)            
+		     begin         
+			XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** Reset Fedex to UPS: '+TCUSN,wd_updt)
+			call Display_HDR_INFO
+			ODLVBY  = 4 
+			call lbl_set_odlvby	;kd_falcon       
+			if (strHAZ_SEVERITY_FLG) .and. (ORUSH .ne. 1)
+			 begin
+			    orush = 1  		;ORMD - Ship Ground only     ;jjf_ops-ORMD
+			    decOverRideRush = 1
+			 end
+
+		     end
+		 end
+;ms_ontrac+
+	      if (strFedExCarrierCode .ne. 'O') .and. (ODLVBY.EQ.9)  
+		  begin   ;Order can no longer ship ontrac
+		    XCALL W_DISP (G_WNDID,WD_POS,21,1,WD_CLR,WDC_EOL,' ** Reset ONTRAC to UPS: '+TCUSN,wd_updt)
+		    call Display_HDR_INFO
+		    ODLVBY  = 4
+		    if (strHAZ_SEVERITY_FLG) .and. (ORUSH .ne. 1)
+		      begin
+			orush = 1  		;ORMD - Ship Ground only     ;jjf_ops-ORMD
+			decOverRideRush = 1
+		      end
+		 end
+;ms_ontrac-
+	  END
+
+	RETURN
+
+;----------------------------------------------------------------------------------
+Display_HDR_INFO,
+
+	strOLDLocn = decOLD_SHPLOC,'XX'
+	strNEWLocn = SHPLOC,'XX'
+	XCALL W_DISP (G_WNDID,WD_POS,22,1,WD_CLR,WDC_EOL,' ** ZIP CODE: '+strHLDZip9(1,5),wd_updt)
+	XCALL W_DISP (G_WNDID,WD_POS,23,1,WD_CLR,WDC_EOL,' ** OLD LOCN: '+strOLDLocn,wd_updt)
+	XCALL W_DISP (G_WNDID,WD_POS,24,1,WD_CLR,WDC_EOL,' ** NEW LOCN: '+strNEWLocn,wd_updt)
+
+	RETURN
+;----------------------------------------------------------------------------------
+Get_ServiceInfo_ShipVia,                  ;jjf_ops07011                       
+	clear serviceinfo
+        
+	decNewRush = ordhdr.ORUSH
+	serviceinfo.strRDI  =  addres.strRDI
+	if (decOverRideRush)
+	   decNewRush = decOverRideRush
+
+        decUSE_ODLVBY  = ORDHDR.ODLVBY
+
+     ;if ODLVBY - 7, Dummy Code for Printing only, 
+     ;   switch to POSTAL - 1st Class Pri Mail   
+	if (ORDHDR.ODLVBY .eq. 7) decUSE_ODLVBY = 5     ;BCBS Test Kit ship Postal mail
+
+	xcall returnShipVIA (cusmas.COMPY,cusmas.CUSNO,decUSE_ODLVBY,ch$carrir, ;jjf_ops07011	
+	&		    ch$CarSer,ch$Servic,ServiceInfo,decNewRush,		;jjf_ops07011	
+	&		    ordhdr.strRDI,crtflg)    			 	;jjf_ops07011	;PP8_DFCT0029770    
+	 						     
+	if (serviceinfo.strPKMSshipVia)
+	  begin
+            ordhdr.odlvby = serviceinfo.decCarrierNumber                 ;jjf_ops07011
+	    ;kd_falcon+
+	    using odlvby select
+	    (4,6),  call lbl_set_odlvby
+	    (),     nop
+	    endusing
+	    ;kd_falcon-
+            ordhdr.orush = serviceinfo.decRush                           ;jjf_ops07011
+	    ordhdr.strOcarrier_code = serviceinfo.strPKMSshipVia
+	    ordhdr.strRdi = serviceinfo.strRDI
+	  end
+
+	RETURN
+;---------------------------------------------------------------------
+; this logic checks for order item is:
+;  - Med Recall and/or  BCBS item
+; to then change to location 1
+;---------------------------------------------------------------------    
+Check_for_Recall,     
+	; have_wafer =			;jjf_wo40554
+	; have_rpd_item =		;jjf_wo40554  ;guy3
+	clear flg$MedRecall		;guy_Recall
+	clear decBCBSItem,decOtherItem,decNewShipVia		;gb_hmo-141
+	clear flg$PhrmOrd,flg$RecFound				;LM3_INC1140427
+	lcnum = tcusn
+	lorn = tordn
+	read (olnchn_w,ordlin,olnkey(1,18))	[1=end_chk_recall,53=end_chk_recall]
+	goto check_if_recall
+
+reads_next_line,     
+	reads (olnchn_w,ordlin,end_chk_recall)		[1=end_chk_recall]	;guy4
+
+check_if_recall,     
+	clear flg$legend       					;LM3_INC1140427
+	if (lcusno.ne.tcusn .or. lordn.ne.tordn) goto end_chk_recall
+	if (lqty .eq. 0) goto reads_next_line
+	if (lretrn .eq. 'R') goto reads_next_line
+	if (lverfy.eq.'Y' .or. lqtshp.ne.0) goto reads_next_line
+
+       ; if (litmno .eq. '43WAFER ') have_wafer = 1             ;jjf_wo40554
+       ; if (litmno(1,3) .eq. 'RPD') have_rpd_item = 1		;jjf_wo40554   ;guy3
+;guy_Recall
+	using litmno select
+	    ('MNMMT396RECALL','MNMMT396EARECAL')	,flg$MedRecall = 1
+	    ('MNMMT397RECALL','MNMMT397EARECAL')	,flg$MedRecall = 1
+	    ('MNMMT398RECALL','MNMMT398EARECAL')	,flg$MedRecall = 1
+	    ('MNMMT399RECALL','MNMMT399EARECAL')	,flg$MedRecall = 1
+	    endusing
+;**************************************************end guy_Recall
+;gb_hmo-141+
+	if (ordlin.litmno .eqs. 'DG881001' .or. ordlin.litmno .eqs. 'DG881002'
+	&   .or. ordlin.litmno .eqs. '0011660950' .or. ordlin.litmno .eqs. '0011670950')		;gb_wo132560
+	then 
+	  begin
+            decBCBSItem = 1	
+	  end
+	else
+	  if (ordlin.litmno(1,1) .nes. '{' 
+	  &   .and. ordlin.litmno(1,1) .nes. '~'
+	  &   .and. ordlin.litmno(1,1) .nes. '[') 
+	  begin
+	    decOtherItem = 1
+	  end
+;se2_smrtpst_RCO+
+	if (ordlin.lflscd .eq. 74) .or. (ordlin.lflscd .eq. 98) 
+	   begin
+	      flg$PdtClsOptOut = TRUE
+	   end
+	if .not. ordlin.loz
+	   begin
+	      ordlin.loz = (invma3.wghtlb*16) + invma3.wghtlb
+	   end
+	decTotalWeight += (ordlin.loz * ordlin.lqty)
+;se2_smrtpst_RCO-
+;LM3_INC1140427+
+;To check if the order is a pharmacist order and setting the flag accordingly
+        call lbl1000_check_for_pharmacist		
+;LM3_INC1140427-
+;gb_hmo-141+
+;	if (have_wafer) return					;guy3
+	goto reads_next_line
+end_chk_recall,
+;LM3_INC1140427+
+;If Pharmacist item found set the flag and make the shipping location to 1
+	if (flg$RecFound)
+	    begin
+	       flg$PhrmOrd = 'Y'
+	       shploc = 1
+	    end
+;LM3_INC1140427-
+	if (decBCBSItem .and. .not. decOtherItem) decNewShipVia = 1	       ;gb_hmo-141
+	return
+;**************end guy2
+;*** begin lim1
+send_email,
+	xcall easymail ('epexchange',			;server
+&		'pragrammers@meyerdistributingco.com',	;sender
+&		'EBOMBW@meyerdistributingco.com',	;to_list     
+&		,					;cc_list
+&		'pragrammers@meyerdistributingco.com',	;from
+&		'pragrammers@meyerdistributingco.com',	;reply_to
+&		'THE FOLLOWING ORDER HAS ERRORS',	;subject
+&		,					;body
+&		strEmailName) 				;file name
+	return
+;*** end lim1
+entrl,							;mew2
+	enterl = 					;mew2
+	goto redlin					;mew2
+
+;=====================================================================================
+Audit_RptHeaders,
+	clear ReportPrtLN
+	ReportPrtLN = 'PROGRAM: EP BCKORD                             AUDIT UPDATE REPORT'
+	writes (CH$AuditRpt,ReportPrtLN)
+
+	clear ReportPrtLN
+	ReportPrtLN = 'Company: ' + %string(common.curcpy,'ZZX') +'    Run Date ' + %string(^d(strDatetime(5:4)),'XX/XX') + %string(^d(strDatetime(1:4)),'/XXXX')	;V10migr
+	writes (CH$AuditRpt,ReportPrtLN) 
+
+	clear ReportPrtLN
+
+	RETURN
+
+
+;======================================================================================
+P810_Write_ITEM_Report,
+	clear ReportPrtLN2	
+
+	if decSAV_ORDR .ne. TORDN
+	  begin
+	    CALL P900_Write_ORDER_Report
+	    ReportPrtLN = '                              OLD    NEW          '
+	    writes (CH$AuditRpt,ReportPrtLN) 
+	    ReportPrtLN = '                  ITEM        SHPLOC SHPLOC HAZMAT'
+	    writes (CH$AuditRpt,ReportPrtLN) 
+            
+	    clear ReportPrtLN
+	  END
+
+        decSAV_ORDR = TORDN
+
+	strR_ITEM 	  = LITMNO
+	strR_OLD_SHIPLOC  = decOLD_SHPLOC,'XX'
+	strR_NEW_SHIPLOC  = SHPLOC,'XX'
+	strR_HAZARD	  = strHAZ_SEVERITY_FLG
+
+ 	writes (CH$AuditRpt,ReportPrtLN2) [40=P810_Write_ITEM_Report,54=P810_Dup]
+
+P810_Dup,
+	clear ReportPrtLN2
+	RETURN
+
+;======================================================================================
+P815_Write_ODLVBY_Report,
+	clear ReportPrtLN3	
+
+	if decSAV_ORDR2 .ne. TORDN
+	  begin
+
+	    CALL P900_Write_ORDER_Report
+	    ReportPrtLN = '                  OLD          NEW     '
+	    writes (CH$AuditRpt,ReportPrtLN) 
+	    ReportPrtLN = '                  ODLVBY       ODLVBY  MESSAGE'
+	    writes (CH$AuditRpt,ReportPrtLN) 
+
+	    clear ReportPrtLN
+	  END
+      
+        decSAV_ORDR2 = TORDN
+
+;	strR_OLD_ODLVBY  = decOLD_ODLVBY,'X'		;se2_SmrtPst_RCO
+	strR_OLD_ODLVBY  = decOLD_ODLVBY,'XX'		;se2_SmrtPst_RCO
+	strR_OLD_ORUSH  = decOLD_ORUSH,'X'
+
+;	strR_NEW_ODLVBY  = ordhdr.odlvby,'X'		;se2_SmrtPst_RCO
+	strR_NEW_ODLVBY  = ordhdr.odlvby,'XX'		;se2_SmrtPst_RCO
+	strR_NEW_ORUSH  = ORDHDR.ORUSH,'X'
+
+	strR_METH_DELV   = strMSG
+
+ 	writes (CH$AuditRpt,ReportPrtLN3) [40=P820_Write_ORDHDR_Report,54=P820_Dup]
+
+P815_Dup,
+	clear ReportPrtLN3
+	RETURN
+
+;======================================================================================
+P820_Write_ORDHDR_Report,
+	clear ReportPrtLN3	
+
+	if decSAV_ORDR3 .ne. TORDN
+	  BEGIN
+	    ReportPrtLN = '                  OLD--------------  NEW--------------    ZIP   METHOD '
+	    writes (CH$AuditRpt,ReportPrtLN) 
+	    ReportPrtLN = '                  ODLVBY ORUSH CARR  ODLVBY ORUSH CARR    CODE  DELV'
+	    writes (CH$AuditRpt,ReportPrtLN) 
+
+	    clear ReportPrtLN
+	  END
+
+        decSAV_ORDR3 = TORDN
+
+      ;  ordhdr.odlvby = serviceinfo.decCarrierNumber                 ;jjf_ops07011
+      ;  ordhdr.orush = serviceinfo.decRush                           ;jjf_ops07011
+      ;  ordhdr.strOcarrier_code = serviceinfo.strPKMSshipVia
+      ;  ordhdr.strRdi = serviceinfo.strRDI
+
+;	strR_OLD_ODLVBY  = decOLD_ODLVBY,'X'		;se2_SmrtPst_RCO
+	strR_OLD_ODLVBY  = decOLD_ODLVBY,'XX'		;se2_SmrtPst_RCO
+	strR_OLD_ORUSH  = decOLD_ORUSH,'X'
+	strR_OLD_CARR   = strOLD_Carr
+
+;	strR_NEW_ODLVBY  = ordhdr.odlvby,'X'		;se2_SmrtPst_RCO
+	strR_NEW_ODLVBY  = ordhdr.odlvby,'XX'		;se2_SmrtPst_RCO
+	strR_NEW_ORUSH  = ORDHDR.ORUSH,'X'
+	strR_NEW_CARR   = ordhdr.strOcarrier_code
+
+	strR_ZIP	 = strHLDZIP9(1,5)
+	strR_METH_DELV   = SERVICEINFO.strServiceDesc
+
+ 	writes (CH$AuditRpt,ReportPrtLN3) [40=P820_Write_ORDHDR_Report,54=P820_Dup]
+
+P820_Dup,
+	clear ReportPrtLN3
+	RETURN
+;======================================================================================
+P900_Write_ORDER_Report,
+	clear ReportPrtLN
+	writes (CH$AuditRpt,ReportPrtLN)     
+
+	ReportPrtLN = '                             PREF  ZIP   Primary'
+	writes (CH$AuditRpt,ReportPrtLN) 
+	ReportPrtLN = 'CPY  CUSTNO       ORDER  RDI CARR  Code  INSURANCE'
+	writes (CH$AuditRpt,ReportPrtLN) 
+        
+	clear ReportPrtLN
+	strR_Cpy = CUSMAS.COMPY,'XXX'
+	strR_CustNo   = strDispCustOrdNo(1:11)		 ;jjf_ops07011
+	strR_OrderNo  = strDispCustOrdNo(12:7)		 ;jjf_ops07011  
+	strR_RDI      = strSAVResOrCom   		 ;jjf_ops07011  
+
+        strR_PreCarr      = decPreCarrier,'X'  		;jjf_ops07011.2
+        strR_Zipcode      = str_zip_in			;jjf_optout2
+        strR_InsNo        = decInsuranceNo1,'XXXX'	;jjf_optout2
+
+        writes (CH$AuditRpt,ReportPrtLN) [40=P900_Write_ORDER_Report,54=P900_Dup]
+
+P900_Dup,
+	clear ReportPrtLN
+	RETURN
+
+P910_NORMAL_END,
+	clear ReportPrtLN
+	writes (CH$AuditRpt,ReportPrtLN)  
+	ReportPrtLN  = 'BCKORD - NORMAL END'
+	writes (CH$AuditRpt,ReportPrtLN)  
+
+        RETURN
+;======================================================================================
+;
+;---	Start of skh_hmo-07028
+;
+process_cb_data,
+	for decICount = 1 until decCBAryCount do
+	  begin
+	    clear strCBPrintLine
+	    if (strCBArray(decICount) .eq. '        ') exitloop
+	    cB_detail = strCBArray(decICount)
+            xcall append_to_delimited_record(strCBPrintLine,strCBAccount)
+	    xcall append_to_delimited_record(strCBPrintLine,strCBName)
+	    xcall append_to_delimited_record(strCBPrintLine,strCBOrder)
+	    xcall append_to_delimited_record(strCBPrintLine,strCBItem)
+	    xcall append_to_delimited_record(strCBPrintLine,strCBDesc)
+;
+	    ;if (strCBOldDelvry .gt. '0' .and. strCBOldDelvry .le. '9') then	;se2_SmrtPst_RCO
+	    if (strCBOldDelvry .gt. '0' .and. strCBOldDelvry .le. '15') then	;se2_SmrtPst_RCO
+	      xcall append_to_delimited_record(strCBPrintLine,DELV(^d(strCBOldDelvry)))		;V10migr
+	    else
+	      xcall append_to_delimited_record(strCBPrintLine,strCBOldDelvry)
+;
+	    if (strCBOldRush .gt. '0' .and. strCBOldRush .le. '9') then
+	      xcall append_to_delimited_record(strCBPrintLine,DELV(^d(strCBOldRush)))		;V10migr
+	    else
+	      xcall append_to_delimited_record(strCBPrintLine,strCBOldRush)
+;
+	    ;if (strCBNewDelvry .gt. '0' .and. strCBNewDelvry .le. '9') then	;se2_SmrtPst_RCO
+	    if (strCBNewDelvry .gt. '0' .and. strCBNewDelvry .le. '15') then	;se2_SmrtPst_RCO
+	      xcall append_to_delimited_record(strCBPrintLine,DELV(^d(strCBNewDelvry)))		;V10migr
+	    else
+	      xcall append_to_delimited_record(strCBPrintLine,strCBNewDelvry)
+;
+	    if (strCBNewRush .gt. '0' .and. strCBNewRush .le. '9') then
+	      xcall append_to_delimited_record(strCBPrintLine,DELV(^d(strCBNewRush)))		;V10migr
+	    else
+	      xcall append_to_delimited_record(strCBPrintLine,strCBNewRush)
+
+	    writes (ch$CBReport,strCBPrintLine)
+	  end
+;
+	clear strCBPrintLine
+;
+	return
+;LM3_INC1140427+
+;--------------------------------------------------------------------------------------------------------
+lbl1000_check_for_pharmacist,
+;........................................................................................................
+;To check if the item is a Pharmacist item. If it is a pharmacist item then it store it in the array.
+;This array will hold all the pharmacist items of that order
+;........................................................................................................
+    	call getinv1
+	call lbl1100_GetAddress
+	flg$POBox = %testPOBox(ADDRES)		;se2_smrtpst_RCO
+	if (strLegend .eq. 'RX ONLY ' .or. strLegend .eq. 'FEDERAL LAW RESTRICTS '
+        &	   .or. strLegend .eq. 'FEDERAL LAW PROHIBITS ')
+	   begin
+	      flg$legend = 1
+	   end
+	if (flg$legend)
+	   begin
+	      call lbl1200_GetLegend 
+ 	   end
+        call lbl1300_NonLegendItem
+	return
+;;=======================================================================================================
+lbl1100_GetAddress,
+;........................................................................................................
+;Label to read the address of the customer. This is needed to check if the item is a pharmacist item based 
+;on state
+;........................................................................................................
+	clear ADDRES
+	adrkey.adcus = ordlin.lcusno
+	adrkey(12,16) = ordlin.straddresskey
+	read (13,ADDRES,adrkey)		[1 = lbl1100_GetAddress_exit,40 = lbl1100_GetAddress,
+					&     53 = lbl1100_GetAddress_exit, 64 = lbl1100_GetAddress_exit]
+	if (0) 
+	   begin
+	      clear ADDRES
+	   end
+
+lbl1100_GetAddress_exit,
+	return
+;--------------------------------------------------------------------------------------------------------
+
+lbl1200_GetLegend,
+;........................................................................................................
+;Label to check if state code of the customer present in PHRMRVW file so that it will go for Pharmacist 
+;review
+;........................................................................................................
+      phrky2.strphr_state = ADDRES.alstat 
+      phrky2.strphr_flgitem = 'L'
+      read(ch$PhrmRvw,PHRMRVW,phrky2,keynum:1,lock:0)[1 = lbl1200_GetLegend_exit,64 = lbl1200_GetLegend_exit,
+                                                     &    40 = lbl1200_GetLegend,53 = lbl1200_GetLegend_exit]
+      flg$RecFound = 'Y'
+
+lbl1200_GetLegend_exit,
+      return
+;--------------------------------------------------------------------------------------------------------
+
+lbl1300_NonLegendItem,
+;........................................................................................................
+;Label to check if state and procedure code of the customer present in PHRMRVW file is of both reviewing 
+;and Dispensing type so that it will go for Pharmacist review & Dispensing
+;........................................................................................................
+    if(ordlin.lproc)                          ;dj6_CA_Pharmacist2
+      begin				      ;dj6_CA_Pharmacist2
+         phrkey.strphr_state = ADDRES.alstat
+         phrkey.strphr_proccode = ordlin.lproc
+;UV1_CA_Pharmacist+
+         phrkey.strphr_flgreview = 'B'
+;UV1_CA_Pharmacist-
+;dj6_CA_Pharmacist2+
+      ;read(ch$PhrmRvw,PHRMRVW,PHRKEY,keynum:0,lock:0)[1 = lbl1300_NonLegendItem_exit,64 = lbl1300_NonLegendItem_exit,
+      ;                                               & 40 = lbl1300_NonLegendItem,53 = lbl1300_NonLegendItem_exit]
+      ;flg$RecFound = 'Y'
+         read(ch$PhrmRvw,PHRMRVW,PHRKEY,keynum:0,lock:0)[1 = lbl1300_NonLegendItem_exit,64 = lblStateItem_RvwAndDsp,
+                                                     & 40 = lbl1300_NonLegendItem,53 = lblStateItem_RvwAndDsp]
+         flg$RecFound = 'Y'
+
+         goto lbl1300_NonLegendItem_exit
+       end					
+
+lblStateItem_RvwAndDsp,
+;........................................................................................................
+;Label to check if state and item  number of the customer present in PHRMRVW file is of both reviewing 
+;and Dispensing type so that it will go for Pharmacist review & Dispensing
+;........................................................................................................
+      phrky3.strphr_state = ADDRES.alstat
+      phrky3.strphr_item = ordlin.LITMNO 
+      phrky3.strphr_flgreview = 'B'
+
+      read(ch$PhrmRvw,PHRMRVW,phrky3,keynum:2,lock:0)[1 = lbl1300_NonLegendItem_exit,64 = lbl1300_NonLegendItem_exit,
+                                                     & 40 = lblStateItem_RvwAndDsp,53 = lbl1300_NonLegendItem_exit]
+      flg$RecFound = 'Y'
+;dj6_CA_Pharmacist2-
+
+lbl1300_NonLegendItem_exit,
+      return
+;--------------------------------------------------------------------------------------------------------
+;LM3_INC1140427-
+;
+;--------------------------------------------------------------------------------------
+;
+email_cb,
+	xcall easymail ('epexchange',			;server
+&		'pragrammers@meyerdistributingco.com',	;sender
+&		'pam_balawender@meyerdistributingco.com,cindy_r@meyerdistributingco.com,jennifer_k@meyerdistributingco.com',	;to_list     
+&		,					;cc_list
+&		'pragrammers@meyerdistributingco.com',	;from
+&		'pragrammers@meyerdistributingco.com',	;reply_to
+&		'THE FOLLOWING COMPEITIVE BID IN-STORE AND DRIVER ORDERS HAVE CHANGED SHIP VIAS',	;subject
+&		,					;body
+&		strCBEmailFile) 			;file name
+	return
+;
+;---	End of skh_hmo-07028
+;
+;======================================================================================
+;kd_falcon+
+lbl_set_odlvby,
+	odlvby = 6
+	if (decDefaultCarrier(shploc) .eq. 4)
+	  begin
+	    odlvby = 4
+	  end
+	return
+
+;kd_falcon-
+	
+errtrap,
+	xcall errtrap
+
+.END
